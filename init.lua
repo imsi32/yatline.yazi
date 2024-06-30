@@ -209,7 +209,13 @@ function CreatePercentage()
 end
 
 local function get_file_extension(filename)
-	return filename:match("^.+%.(.+)$")
+	local extension = filename:match("^.+%.(.+)$")
+
+	if extension == nil or extension == "" then
+		return "null"
+	else
+		return extension
+	end
 end
 
 function CreateFileExtension()
