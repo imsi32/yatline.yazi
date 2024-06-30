@@ -18,3 +18,8 @@ The first Yazi plugin for both header-line and status-line.
 - Flexible
 - Simple
 - Manual Configuration
+
+## Q&A
+Q: Why does text in tabs not shows up?
+
+A: You need to increase tab_width in theme.toml.
