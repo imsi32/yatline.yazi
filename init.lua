@@ -5,11 +5,11 @@ local section_separator_close = ""
 local component_separator_open  = ""
 local component_separator_close = ""
 
-local separator_style = { bg = "#282828", fg = "#282828", bold = true }
+local separator_style = { bg = "#282828", fg = "#282828" }
 
-local style_a = { bg = "#282828", fg = "#282828", bold = true }
-local style_b = { bg = "#665c54", fg = "#ebdbb2", bold = true}
-local style_c = { bg = "#3c3836", fg = "#a89984", bold = true}
+local style_a = { bg = "#282828", fg = "#282828" }
+local style_b = { bg = "#665c54", fg = "#ebdbb2" }
+local style_c = { bg = "#3c3836", fg = "#a89984" }
 
 local function set_mode_style(mode)
 
@@ -64,7 +64,7 @@ end
 local function set_component_style(component, type)
 
 	if type == 1 then
-		component:style(style_a)
+		component:style(style_a):bold()
 	elseif type == 2 then
 		component:style(style_b)
 	else
