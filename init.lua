@@ -1,4 +1,6 @@
 ---@diagnostic disable: undefined-global
+--- @alias Mode Mode
+--- @alias Line Line
 local section_separator_open  = ""
 local section_separator_close = ""
 
@@ -88,6 +90,29 @@ local function connect_separator(component, side, type)
 	else
 		return ui.Line{component, close}
 	end
+end
+
+--- Creates a component from given string according to other parameters.
+--- @param string string The text which will be shown inside of the component.
+--- @param mode Mode The mode of the active tab.
+--- @param side integer Left or right side of the either header-line or status-line.
+--- @param component_type integer Which section component will be in [ a | b | c ].
+--- @param separator_type integer Which part will be in the section if the section has two or more components.
+--- @param previous_component_type integer The type of the component before the separator.
+--- @param following_component_type integer The type of the component after the separator.
+--- @return Line line Customized Line which follows desired style of the parameters.
+--- @see set_mode_style To know how mode style selected.
+--- @see set_separator_style To know how separator style applied.
+--- @see set_component_style To know how component style applied.
+--- @see connect_separator To know how component and separator connected.
+local function create_component_from_str(string, mode, side, component_type, separator_type, previous_component_type, following_component_type)
+	local span = ui.Span(" " .. string .. " ")
+	set_mode_style(mode)
+	set_separator_style(side, separator_type, previous_component_type, following_component_type)
+	set_component_style(span, component_type)
+	local line = connect_separator(span, side, separator_type)
+
+	return line
 end
 
 function CreateDate()
