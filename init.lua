@@ -90,6 +90,32 @@ local function connect_separator(component, side, type)
 	end
 end
 
+--- Creates a component from given string.
+-- Components will have style according to the given parameters.
+-- @release v0.2.0
+-- @param string The text which will be shown.
+-- @param mode Active mode in Yazi.
+-- @param side Left or right side of the either header-line or status-line.
+-- @param component_type Placement of component in a section [ a | b | c ].
+-- @param separator_type If component is in section where there is two or more component,
+-- there is a change of two type separator.
+-- @param previous_component_type Style of the component before the separator.
+-- @param following_component_type Style of the component after the separator.
+-- @return Line
+-- @see set_mode_style
+-- @see set_separator_style
+-- @see set_component_style
+-- @see connect_separator
+-- @usage create_component_from_str("Hello World", cx.active.mode, 2, 1, 1, 2, 1)
+local function create_component_from_str(string, mode, side, component_type, separator_type, previous_component_type, following_component_type)
+	local span = ui.Span(" " .. string .. " ")
+	set_mode_style(mode)
+	set_separator_style(side, separator_type, previous_component_type, following_component_type)
+	set_component_style(span, component_type)
+	local line = connect_separator(span, side, separator_type)
+	return line
+end
+
 function CreateDate()
 
 	set_mode_style(cx.active.mode)
