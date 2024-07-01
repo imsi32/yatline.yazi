@@ -11,6 +11,8 @@ local style_a = { bg = "#282828", fg = "#282828" }
 local style_b = { bg = "#665c54", fg = "#ebdbb2" }
 local style_c = { bg = "#3c3836", fg = "#a89984" }
 
+os.setlocale("")
+
 local function set_mode_style(mode)
 
 	if mode.is_select then
