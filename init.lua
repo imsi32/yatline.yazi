@@ -317,7 +317,7 @@ function CreatePermissions()
 
 	local spans = {}
 	spans[1] = ui.Span(" ")
-	set_component_style(spans[1])
+	set_component_style(spans[1], ComponentType.C)
 	for i = 1, #perm do
 		local c = perm:sub(i, i)
 		local style = THEME.status.permissions_t
@@ -334,7 +334,7 @@ function CreatePermissions()
 		spans[i + 1] = ui.Span(c):style(style)
 	end
 	spans[#perm + 2] = ui.Span(" ")
-	set_component_style(spans[#perm + 2])
+	set_component_style(spans[#perm + 2], ComponentType.C)
 
 	set_separator_style(Side.RIGHT, SeparatorType.OUTER, ComponentType.C, ComponentType.C)
 	local url_lin = ui.Line(spans)
