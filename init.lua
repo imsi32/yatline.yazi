@@ -13,6 +13,10 @@
 --- | `enums.B` # Components on the second section. [ | B | ... ] or [ ... | B | ]
 --- | `enums.C` # Components on the third section. [ | | C ... ] or [ ... C | | ]
 
+--======================--
+-- Variable Declaration --
+--======================--
+
 local section_separator_open  = ""
 local section_separator_close = ""
 
@@ -30,6 +34,10 @@ local SeparatorType = { OUTER = 0, INNER = 1 }
 local ComponentType = { A = 0, B = 1, C = 2 }
 
 os.setlocale("")
+
+--=================--
+-- Component Setup --
+--=================--
 
 --- Sets the background of style_a according to the tab's mode.
 --- @param mode Mode The mode of the active tab.
@@ -49,38 +57,25 @@ end
 --- always think separator is in middle of two components
 --- and previous component is in left side and following component is in right side.
 --- Thus, side of component does not important when choosing these two components.
---- @param side Side Left or right side of the either header-line or status-line.
 --- @param separator_type SeparatorType Where will there be a separator in the section.
---- @param previous_component_type ComponentType The type of the component before the separator.
---- @param following_component_type ComponentType The type of the component after the separator.
-local function set_separator_style(side, separator_type, previous_component_type, following_component_type)
-	if side == Side.LEFT then
-		local temp = previous_component_type
-		previous_component_type = following_component_type
-		following_component_type = temp
-	end
-
+--- @param component_type ComponentType Which section component will be in [ a | b | c ].
+local function set_separator_style(separator_type, component_type)
 	if separator_type == SeparatorType.OUTER then
-		if previous_component_type == ComponentType.A then
-			separator_style.bg = style_a.bg
-		elseif previous_component_type == ComponentType.B then
+		if component_type == ComponentType.A then
 			separator_style.bg = style_b.bg
-		else
-			separator_style.bg = style_c.bg
-		end
-
-		if following_component_type == ComponentType.A then
 			separator_style.fg = style_a.bg
-		elseif following_component_type == ComponentType.B then
+		elseif component_type == ComponentType.B then
+			separator_style.bg = style_c.bg
 			separator_style.fg = style_b.bg
 		else
+			separator_style.bg = style_c.bg
 			separator_style.fg = style_c.bg
 		end
 	else
-		if previous_component_type == ComponentType.A then
+		if component_type == ComponentType.A then
 			separator_style.bg = style_a.bg
 			separator_style.fg = style_a.fg
-		elseif previous_component_type == ComponentType.B then
+		elseif component_type == ComponentType.B then
 			separator_style.bg = style_b.bg
 			separator_style.fg = style_b.fg
 		else
@@ -89,6 +84,7 @@ local function set_separator_style(side, separator_type, previous_component_type
 		end
 	end
 end
+
 
 ---Sets the style of the component according to the its type.
 --- @param component Span Component that will be styled.
@@ -135,145 +131,30 @@ end
 --- @param side Side Left or right side of the either header-line or status-line.
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
 --- @param separator_type SeparatorType Where will there be a separator in the section.
---- @param previous_component_type ComponentType The type of the component before the separator.
---- @param following_component_type ComponentType The type of the component after the separator.
 --- @return Line line Customized Line which follows desired style of the parameters.
 --- @see set_mode_style To know how mode style selected.
 --- @see set_separator_style To know how separator style applied.
 --- @see set_component_style To know how component style applied.
 --- @see connect_separator To know how component and separator connected.
-local function create_component_from_str(string, mode, side, component_type, separator_type, previous_component_type, following_component_type)
+local function create_component_from_str(string, mode, side, component_type, separator_type)
 	local span = ui.Span(" " .. string .. " ")
 	set_mode_style(mode)
-	set_separator_style(side, separator_type, previous_component_type, following_component_type)
+	set_separator_style(separator_type, component_type)
 	set_component_style(span, component_type)
 	local line = connect_separator(span, side, separator_type)
 
 	return line
 end
 
-function CreateDate()
+--==================--
+-- Helper Functions --
+--==================--
 
-	set_mode_style(cx.active.mode)
-	set_separator_style(Side.RIGHT, SeparatorType.OUTER, ComponentType.B, ComponentType.A)
-
-	local date = ui.Span(" " .. os.date("%A, %d %B %Y", os.time()) .. " ")
-	set_component_style(date, ComponentType.A)
-	local date_line = connect_separator(date, Side.RIGHT, SeparatorType.OUTER)
-
-	set_separator_style(Side.RIGHT, SeparatorType.OUTER, ComponentType.C, ComponentType.B)
-
-	local time = ui.Span(" " .. os.date("%X", os.time()) .. " ")
-	set_component_style(time, ComponentType.B)
-	local time_line = connect_separator(time, Side.RIGHT, SeparatorType.OUTER)
-
-	return ui.Line( {time_line, date_line} )
-end
-
-function CreateTabs()
-
-	local tabs = #cx.tabs
-	local spans = {}
-
-	for i = 1, tabs do
-
-		local text = i
-		if THEME.manager.tab_width > 2 then
-			text = ya.truncate(text .. " " .. cx.tabs[i]:name(), { max = THEME.manager.tab_width })
-		end
-
-		if i == cx.tabs.idx then
-			set_mode_style(cx.tabs[i].mode)
-			set_separator_style(Side.LEFT, SeparatorType.OUTER, ComponentType.A, ComponentType.C)
-
-			local span = ui.Span(" " .. text .. " ")
-			set_component_style(span, ComponentType.A)
-			spans[#spans + 1] = connect_separator(span, Side.LEFT, SeparatorType.OUTER)
-		else
-			local span = ui.Span(" " .. text .. " ")
-			set_component_style(span, ComponentType.C)
-
-			if i == cx.tabs.idx - 1 then
-
-				set_mode_style(cx.tabs[i + 1].mode)
-				set_separator_style(Side.LEFT, SeparatorType.OUTER, ComponentType.C, ComponentType.A)
-				spans[#spans + 1] = connect_separator(span, Side.LEFT, SeparatorType.OUTER)
-			else
-				set_separator_style(Side.LEFT, SeparatorType.INNER, ComponentType.C, ComponentType.C)
-				spans[#spans + 1] = connect_separator(span, Side.LEFT, SeparatorType.INNER)
-			end
-		end
-	end
-
-	return ui.Line(spans)
-end
-
-
-
-function CreateName()
-	local name = ui.Span(" " .. cx.active.current.hovered.name .. " ")
-	set_separator_style(Side.LEFT, SeparatorType.INNER, ComponentType.C, ComponentType.C)
-	set_component_style(name, ComponentType.C)
-	local name_line = connect_separator(name, Side.LEFT, SeparatorType.INNER)
-	return name_line
-end
-
-function CreateMode()
-	local text = tostring(cx.active.mode):upper()
-	if text == "UNSET" then
-		text = "UN-SET"
-	end
-
-	local mode = ui.Span(" " .. text .. " ")
-	set_mode_style(cx.active.mode)
-	set_separator_style(Side.LEFT, SeparatorType.OUTER, ComponentType.A, ComponentType.B)
-	set_component_style(mode, ComponentType.A)
-	local mode_line = connect_separator(mode, Side.LEFT, SeparatorType.OUTER)
-
-	return mode_line
-end
-
-function CreatePosition()
-	local cursor = cx.active.current.cursor
-	local length = #cx.active.current.files
-
-	local position = ui.Span(" " .. string.format(" %2d/%-2d", cursor + 1, length) .. " ")
-	set_mode_style(cx.active.mode)
-	set_separator_style(Side.RIGHT, SeparatorType.OUTER, ComponentType.B, ComponentType.A)
-	set_component_style(position, ComponentType.A)
-	local position_line = connect_separator(position, Side.RIGHT, SeparatorType.OUTER)
-
-	return position_line
-end
-
-function CreatePercentage()
-	local percent = 0
-	local cursor = cx.active.current.cursor
-	local length = #cx.active.current.files
-	if cursor ~= 0 and length ~= 0 then
-		percent = math.floor((cursor + 1) * 100 / length)
-	end
-
-	local value = ""
-
-	if percent == 0 then
-		value = " Top "
-	elseif percent == 100 then
-		value = " Bot "
-	else
-		value = string.format("%3d%% ", percent)
-	end
-
-	local percent_span = ui.Span(value)
-	set_separator_style(Side.RIGHT, SeparatorType.OUTER, ComponentType.C, ComponentType.B)
-	set_component_style(percent_span, ComponentType.B)
-	local percent_line = connect_separator(percent_span, Side.RIGHT, SeparatorType.OUTER)
-
-	return percent_line
-end
-
-local function get_file_extension(filename)
-	local extension = filename:match("^.+%.(.+)$")
+--- Gets the file name from given file extension.
+---@param file_name string The name of a file whose extension will be taken.
+---@return string file_extension Extension of a file.
+local function get_file_extension(file_name)
+	local extension = file_name:match("^.+%.(.+)$")
 
 	if extension == nil or extension == "" then
 		return "null"
@@ -282,26 +163,131 @@ local function get_file_extension(filename)
 	end
 end
 
-function CreateFileExtension()
+--==================--
+-- Getter Functions --
+--==================--
 
+--- Gets the hovered file's name of the current active tab.
+--- @return string name Current active tab's hovered file's name.
+local function get_hovered_name()
+	return cx.active.current.hovered.name
+end
+
+--- Gets the hovered file's size of the current active tab.
+--- @return string size Current active tab's hovered file's size.
+local function get_hovered_size()
+	local h = cx.active.current.hovered
+
+	return ya.readable_size(h:size() or h.cha.length)
+end
+
+--- Gets the hovered file's extension of the current active tab.
+--- @param show_icon boolean Whether or not an icon will be shown.
+--- @return string file_extension Current active tab's hovered file's extension.
+local function get_hovered_file_extension(show_icon)
 	local file = cx.active.current.hovered
-	local icon = file:icon().text
 	local cha = file.cha
-	local name = "extension"
 
+	local name
 	if cha.is_dir then
 		name = "dir"
 	else
 		name = get_file_extension(file.url:name())
 	end
 
-	local file_extension = ui.Span(" " .. icon .. " " .. name .. " ")
-	set_separator_style(Side.RIGHT, SeparatorType.INNER, ComponentType.C, ComponentType.C)
-	set_component_style(file_extension, ComponentType.C)
+	if show_icon then
+		local icon = file:icon().text
+		return icon .. " " .. name
+	else
+		return name
+	end
+end
 
-	local file_line = connect_separator(file_extension, Side.RIGHT, SeparatorType.INNER)
+--- Gets the mode of active tab.
+--- @return string mode Active tab's mode.
+local function get_tab_mode()
+	local mode = tostring(cx.active.mode):upper()
+	if mode == "UNSET" then
+		mode = "UN-SET"
+	end
 
-	return file_line
+	return mode
+end
+
+--- Gets the cursor position in the current active tab.
+--- @return string cursor_position Current active tab's cursor position.
+local function get_cursor_position()
+	local cursor = cx.active.current.cursor
+	local length = #cx.active.current.files
+
+	return string.format(" %2d/%-2d", cursor + 1, length)
+end
+
+--- Gets the cursor position as percentage which is according to the number of files inside of current active tab.
+--- @return string percentage Percentage of current active tab's cursor position and number of percentages.
+local function get_cursor_percentage()
+	local percentage = 0
+	local cursor = cx.active.current.cursor
+	local length = #cx.active.current.files
+	if cursor ~= 0 and length ~= 0 then
+		percentage = math.floor((cursor + 1) * 100 / length)
+	end
+
+	if percentage == 0 then
+		return " Top "
+	elseif percentage == 100 then
+		return " Bot "
+	else
+		return string.format("%3d%% ", percentage)
+	end
+end
+
+--- Gets the local date or time values.
+--- @param format string Format for giving desired date or time values.
+--- @return string date Date or time values.
+--- @see os.date To see how format works.
+local function get_date(format)
+	return tostring(os.date(format))
+end
+
+--=====================--
+-- Component Functions --
+--=====================--
+
+function CreateTabs()
+	local tabs = #cx.tabs
+	local lines = {}
+
+	for i = 1, tabs do
+		local text = i
+		if THEME.manager.tab_width > 2 then
+			text = ya.truncate(text .. " " .. cx.tabs[i]:name(), { max = THEME.manager.tab_width })
+		end
+
+		if i == cx.tabs.idx then
+			local span = ui.Span(" " .. text .. " ")
+			set_mode_style(cx.tabs[i].mode)
+			set_component_style(span, ComponentType.A)
+			separator_style.fg = style_a.bg
+			separator_style.bg = style_c.bg
+			lines[#lines + 1] = connect_separator(span, Side.LEFT, SeparatorType.OUTER)
+		else
+			local span = ui.Span(" " .. text .. " ")
+			set_component_style(span, ComponentType.C)
+
+			if i == cx.tabs.idx - 1 then
+				set_mode_style(cx.tabs[i + 1].mode)
+				separator_style.fg = style_c.bg
+				separator_style.bg = style_a.bg
+				lines[#lines + 1] = connect_separator(span, Side.LEFT, SeparatorType.OUTER)
+			else
+				set_separator_style(SeparatorType.INNER, ComponentType.C)
+				lines[#lines + 1] = connect_separator(span, Side.LEFT, SeparatorType.INNER)
+			end
+		end
+	end
+
+	return ui.Line(lines)
 end
 
 function CreatePermissions()
@@ -318,8 +304,10 @@ function CreatePermissions()
 	local spans = {}
 	spans[1] = ui.Span(" ")
 	set_component_style(spans[1], ComponentType.C)
+
 	for i = 1, #perm do
 		local c = perm:sub(i, i)
+
 		local style = THEME.status.permissions_t
 		if c == "-" then
 			style = THEME.status.permissions_s
@@ -330,32 +318,18 @@ function CreatePermissions()
 		elseif c == "x" or c == "s" or c == "S" or c == "t" or c == "T" then
 			style = THEME.status.permissions_x
 		end
+
 		style.bg = style_c.bg
 		spans[i + 1] = ui.Span(c):style(style)
 	end
+
 	spans[#perm + 2] = ui.Span(" ")
 	set_component_style(spans[#perm + 2], ComponentType.C)
+	set_separator_style(SeparatorType.OUTER, ComponentType.C)
+	local perm_line = ui.Line(spans)
+	local line = connect_separator(perm_line, Side.RIGHT, SeparatorType.INNER)
 
-	set_separator_style(Side.RIGHT, SeparatorType.OUTER, ComponentType.C, ComponentType.C)
-	local url_lin = ui.Line(spans)
-	local url_line = connect_separator(url_lin, Side.RIGHT, SeparatorType.INNER)
-
-	return url_line
-end
-
-function CreateSize()
-	local h = cx.active.current.hovered
-	if not h then
-		return ui.Line {}
-	end
-
-	local size = ui.Span(" " .. ya.readable_size(h:size() or h.cha.length) .. " ")
-	set_mode_style(cx.active.mode)
-	set_separator_style(Side.LEFT, SeparatorType.OUTER, ComponentType.B, ComponentType.C)
-	set_component_style(size , ComponentType.B)
-	local size_line = connect_separator(size, Side.LEFT, SeparatorType.OUTER)
-
-	return size_line
+	return line
 end
 
 function CreateCount()
@@ -377,7 +351,7 @@ function CreateCount()
 
 	local yanked = ui.Span(string.format(" %s %d ", yanked_icon, num_yanked))
 	yanked:style(yanked_style)
-	set_separator_style(Side.LEFT, SeparatorType.OUTER, ComponentType.C, ComponentType.C)
+	set_separator_style(SeparatorType.OUTER, ComponentType.C)
 	local yanked_line = connect_separator(yanked, Side.LEFT, SeparatorType.OUTER)
 
 	return ui.Line{selected_line, yanked_line}
@@ -387,25 +361,41 @@ return {
 	setup = function(st)
 		Header.render = function(self, area)
 			self.area = area
+			local left = ui.Line {
+				CreateTabs()
+			}
+			local right = ui.Line {
+				create_component_from_str(get_date("%X"), cx.active.mode, Side.RIGHT, ComponentType.B, SeparatorType.OUTER),
+				create_component_from_str(get_date("%A, %d %B %Y"), cx.active.mode, Side.RIGHT, ComponentType.A, SeparatorType.OUTER)
+			}
 
 			return {
-				ui.Paragraph(area, { CreateTabs() }):style(style_c),
-				ui.Paragraph(area, { CreateDate() }):align(ui.Paragraph.RIGHT),
+				ui.Paragraph(area, { left }):style(style_c),
+				ui.Paragraph(area, { right }):align(ui.Paragraph.RIGHT),
 			}
 		end
 
 		Status.render = function(self, area)
 			self.area = area
 
-			local left = ui.Line { CreateMode(), CreateSize(), CreateName(), CreateCount()}
-			local right = ui.Line { CreatePermissions(), CreateFileExtension(), CreatePercentage(), CreatePosition() }
+			local left = ui.Line {
+				create_component_from_str(get_tab_mode(), cx.active.mode, Side.LEFT, ComponentType.A, SeparatorType.OUTER),
+				create_component_from_str(get_hovered_size(), cx.active.mode, Side.LEFT, ComponentType.B, SeparatorType.OUTER),
+				create_component_from_str(get_hovered_name(), cx.active.mode, Side.LEFT, ComponentType.C, SeparatorType.INNER),
+				CreateCount()
+			}
+			local right = ui.Line {
+				CreatePermissions(),
+				create_component_from_str(get_hovered_file_extension(true), cx.active.mode, Side.RIGHT, ComponentType.C, SeparatorType.INNER),
+				create_component_from_str(get_cursor_percentage(), cx.active.mode, Side.RIGHT, ComponentType.B, SeparatorType.OUTER),
+				create_component_from_str(get_cursor_position(), cx.active.mode, Side.RIGHT, ComponentType.A, SeparatorType.OUTER),
+			}
+
 			return {
 				ui.Paragraph(area, { left }):style(style_c),
 				ui.Paragraph(area, { right }):align(ui.Paragraph.RIGHT),
 				table.unpack(Progress:render(area, right:width())),
 			}
 		end
-
 	end,
 }
-
