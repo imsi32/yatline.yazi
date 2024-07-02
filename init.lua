@@ -13,27 +13,51 @@
 --- | `enums.B` # Components on the second section. [ | B | ... ] or [ ... | B | ]
 --- | `enums.C` # Components on the third section. [ | | C ... ] or [ ... C | | ]
 
---======================--
--- Variable Declaration --
---======================--
-
-local section_separator_open  = ""
-local section_separator_close = ""
-
-local part_separator_open  = ""
-local part_separator_close = ""
-
-local separator_style = { bg = "black", fg = "black" }
-
-local style_a = { bg = "black", fg = "black" }
-local style_b = { bg = "#665c54", fg = "#ebdbb2" }
-local style_c = { bg = "#3c3836", fg = "#a89984" }
+--==================--
+-- Type Declaration --
+--==================--
 
 local Side = { LEFT = 0, RIGHT = 1 }
 local SeparatorType = { OUTER = 0, INNER = 1 }
 local ComponentType = { A = 0, B = 1, C = 2 }
 
 os.setlocale("")
+
+--=========================--
+-- Variable Initialization --
+--=========================--
+
+local section_separator_open
+local section_separator_close
+
+local part_separator_open
+local part_separator_close
+
+local separator_style = { bg = "black", fg = "black" }
+
+local style_a
+local style_b
+local style_c
+
+local style_a_normal_bg
+local style_a_select_bg
+local style_a_un_set_bg
+
+local permissions_t
+local permissions_r
+local permissions_w
+local permissions_x
+local permissions_s
+
+local tab_width
+
+local selected_icon
+local copied_icon
+local cut_icon
+
+local selected_style
+local copied_style
+local cut_style
 
 --=================--
 -- Component Setup --
@@ -44,11 +68,11 @@ os.setlocale("")
 --- @see cx.active.mode To get the active tab's mode.
 local function set_mode_style(mode)
 	if mode.is_select then
-		style_a.bg = "#d79921"
+		style_a.bg = style_a_select_bg
 	elseif mode.is_unset then
-		style_a.bg = "#d65d0e"
+		style_a.bg = style_a_un_set_bg
 	else
-		style_a.bg = "#a89984"
+		style_a.bg = style_a_normal_bg
 	end
 end
 
@@ -260,8 +284,8 @@ function CreateTabs()
 
 	for i = 1, tabs do
 		local text = i
-		if THEME.manager.tab_width > 2 then
-			text = ya.truncate(text .. " " .. cx.tabs[i]:name(), { max = THEME.manager.tab_width })
+		if tab_width > 2 then
+			text = ya.truncate(text .. " " .. cx.tabs[i]:name(), { max = tab_width })
 		end
 
 		if i == cx.tabs.idx then
@@ -308,15 +332,15 @@ function CreatePermissions()
 	for i = 1, #perm do
 		local c = perm:sub(i, i)
 
-		local style = THEME.status.permissions_t
+		local style = permissions_t
 		if c == "-" then
-			style = THEME.status.permissions_s
+			style = permissions_s
 		elseif c == "r" then
-			style = THEME.status.permissions_r
+			style = permissions_r
 		elseif c == "w" then
-			style = THEME.status.permissions_w
+			style = permissions_w
 		elseif c == "x" or c == "s" or c == "S" or c == "t" or c == "T" then
-			style = THEME.status.permissions_x
+			style = permissions_x
 		end
 
 		style.bg = style_c.bg
@@ -338,15 +362,15 @@ function CreateCount()
 
 	local yanked_style, yanked_icon
 	if cx.yanked.is_cut then
-		yanked_style = THEME.manager.count_cut
-		yanked_icon = ""
+		yanked_style = cut_style
+		yanked_icon = cut_icon
 	else
-		yanked_style = THEME.manager.count_copied
-		yanked_icon = ""
+		yanked_style = copied_style
+		yanked_icon = copied_icon
 	end
 
-	local selected = ui.Span(string.format(" 󰻭 %d ", num_selected))
-	selected:style(THEME.manager.count_selected)
+	local selected = ui.Span(string.format(" %s %d ", selected_icon, num_selected))
+	selected:style(selected_style)
 	local selected_line = ui.Line{selected}
 
 	local yanked = ui.Span(string.format(" %s %d ", yanked_icon, num_yanked))
@@ -358,9 +382,40 @@ function CreateCount()
 end
 
 return {
-	setup = function(st)
+	setup = function(_, config)
+		section_separator_open = config.section_separator.open
+		section_separator_close = config.section_separator.close
+
+		part_separator_open = config.part_separator.open
+		part_separator_close = config.part_separator.close
+
+		style_a = { bg = config.style_a.bg_mode.normal, fg = config.style_a.fg}
+		style_b = config.style_b
+		style_c = config.style_c
+
+		style_a_normal_bg = config.style_a.bg_mode.normal
+		style_a_select_bg = config.style_a.bg_mode.select
+		style_a_un_set_bg = config.style_a.bg_mode.un_set
+
+		permissions_t = config.permissions_t
+		permissions_r = config.permissions_r
+		permissions_w = config.permissions_w
+		permissions_x = config.permissions_x
+		permissions_s = config.permissions_s
+
+		tab_width = config.tab_width
+
+		selected_icon = config.selected.icon
+		copied_icon = config.copied.icon
+		cut_icon = config.cut.icon
+
+		selected_style = config.selected.style
+		copied_style = config.copied.style
+		cut_style = config.cut.style
+
 		Header.render = function(self, area)
 			self.area = area
+
 			local left = ui.Line {
 				CreateTabs()
 			}
