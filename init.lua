@@ -2,6 +2,7 @@
 --- @alias Mode Mode Comes from Yazi.
 --- @alias Line Line Comes from Yazi.
 --- @alias Span Span Comes from Yazi.
+--- @alias Config Config The config used for setup.
 --- @alias Side # [ LEFT ... RIGHT ]
 --- | `enums.LEFT` # The left side of either the header-line or status-line. [ LEFT ... ]
 --- | `enums.RIGHT` # The right side of either the header-line or status-line. [ ... RIGHT]
@@ -13,27 +14,53 @@
 --- | `enums.B` # Components on the second section. [ | B | ... ] or [ ... | B | ]
 --- | `enums.C` # Components on the third section. [ | | C ... ] or [ ... C | | ]
 
---======================--
--- Variable Declaration --
---======================--
-
-local section_separator_open  = ""
-local section_separator_close = ""
-
-local part_separator_open  = ""
-local part_separator_close = ""
-
-local separator_style = { bg = "black", fg = "black" }
-
-local style_a = { bg = "black", fg = "black" }
-local style_b = { bg = "#665c54", fg = "#ebdbb2" }
-local style_c = { bg = "#3c3836", fg = "#a89984" }
+--==================--
+-- Type Declaration --
+--==================--
 
 local Side = { LEFT = 0, RIGHT = 1 }
 local SeparatorType = { OUTER = 0, INNER = 1 }
 local ComponentType = { A = 0, B = 1, C = 2 }
 
 os.setlocale("")
+
+--=========================--
+-- Variable Initialization --
+--=========================--
+
+local section_separator_open
+local section_separator_close
+
+local part_separator_open
+local part_separator_close
+
+local separator_style = { bg = "black", fg = "black" }
+
+local style_a
+local style_b
+local style_c
+
+local style_a_normal_bg
+local style_a_select_bg
+local style_a_un_set_bg
+
+local permissions_t
+local permissions_r
+local permissions_w
+local permissions_x
+local permissions_s
+
+local tab_width
+
+local selected_icon
+local copied_icon
+local cut_icon
+
+local selected_style
+local copied_style
+local cut_style
+
+local section_order = {"section_a", "section_b", "section_c"}
 
 --=================--
 -- Component Setup --
@@ -44,11 +71,11 @@ os.setlocale("")
 --- @see cx.active.mode To get the active tab's mode.
 local function set_mode_style(mode)
 	if mode.is_select then
-		style_a.bg = "#d79921"
+		style_a.bg = style_a_select_bg
 	elseif mode.is_unset then
-		style_a.bg = "#d65d0e"
+		style_a.bg = style_a_un_set_bg
 	else
-		style_a.bg = "#a89984"
+		style_a.bg = style_a_normal_bg
 	end
 end
 
@@ -127,7 +154,6 @@ end
 
 --- Creates a component from given string according to other parameters.
 --- @param string string The text which will be shown inside of the component.
---- @param mode Mode The mode of the active tab.
 --- @param side Side Left or right side of the either header-line or status-line.
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
 --- @param separator_type SeparatorType Where will there be a separator in the section.
@@ -136,9 +162,9 @@ end
 --- @see set_separator_style To know how separator style applied.
 --- @see set_component_style To know how component style applied.
 --- @see connect_separator To know how component and separator connected.
-local function create_component_from_str(string, mode, side, component_type, separator_type)
+local function create_component_from_str(string, side, component_type, separator_type)
 	local span = ui.Span(" " .. string .. " ")
-	set_mode_style(mode)
+	set_mode_style(cx.active.mode)
 	set_separator_style(separator_type, component_type)
 	set_component_style(span, component_type)
 	local line = connect_separator(span, side, separator_type)
@@ -167,15 +193,17 @@ end
 -- Getter Functions --
 --==================--
 
+local get = {}
+
 --- Gets the hovered file's name of the current active tab.
 --- @return string name Current active tab's hovered file's name.
-local function get_hovered_name()
+function get:hovered_name()
 	return cx.active.current.hovered.name
 end
 
 --- Gets the hovered file's size of the current active tab.
 --- @return string size Current active tab's hovered file's size.
-local function get_hovered_size()
+function get:hovered_size()
 	local h = cx.active.current.hovered
 
 	return ya.readable_size(h:size() or h.cha.length)
@@ -184,7 +212,7 @@ end
 --- Gets the hovered file's extension of the current active tab.
 --- @param show_icon boolean Whether or not an icon will be shown.
 --- @return string file_extension Current active tab's hovered file's extension.
-local function get_hovered_file_extension(show_icon)
+function get:hovered_file_extension(show_icon)
 	local file = cx.active.current.hovered
 	local cha = file.cha
 
@@ -205,7 +233,7 @@ end
 
 --- Gets the mode of active tab.
 --- @return string mode Active tab's mode.
-local function get_tab_mode()
+function get:tab_mode()
 	local mode = tostring(cx.active.mode):upper()
 	if mode == "UNSET" then
 		mode = "UN-SET"
@@ -216,7 +244,7 @@ end
 
 --- Gets the cursor position in the current active tab.
 --- @return string cursor_position Current active tab's cursor position.
-local function get_cursor_position()
+function get:cursor_position()
 	local cursor = cx.active.current.cursor
 	local length = #cx.active.current.files
 
@@ -225,7 +253,7 @@ end
 
 --- Gets the cursor position as percentage which is according to the number of files inside of current active tab.
 --- @return string percentage Percentage of current active tab's cursor position and number of percentages.
-local function get_cursor_percentage()
+function get:cursor_percentage()
 	local percentage = 0
 	local cursor = cx.active.current.cursor
 	local length = #cx.active.current.files
@@ -246,7 +274,7 @@ end
 --- @param format string Format for giving desired date or time values.
 --- @return string date Date or time values.
 --- @see os.date To see how format works.
-local function get_date(format)
+function get:date(format)
 	return tostring(os.date(format))
 end
 
@@ -260,8 +288,8 @@ function CreateTabs()
 
 	for i = 1, tabs do
 		local text = i
-		if THEME.manager.tab_width > 2 then
-			text = ya.truncate(text .. " " .. cx.tabs[i]:name(), { max = THEME.manager.tab_width })
+		if tab_width > 2 then
+			text = ya.truncate(text .. " " .. cx.tabs[i]:name(), { max = tab_width })
 		end
 
 		if i == cx.tabs.idx then
@@ -308,15 +336,15 @@ function CreatePermissions()
 	for i = 1, #perm do
 		local c = perm:sub(i, i)
 
-		local style = THEME.status.permissions_t
+		local style = permissions_t
 		if c == "-" then
-			style = THEME.status.permissions_s
+			style = permissions_s
 		elseif c == "r" then
-			style = THEME.status.permissions_r
+			style = permissions_r
 		elseif c == "w" then
-			style = THEME.status.permissions_w
+			style = permissions_w
 		elseif c == "x" or c == "s" or c == "S" or c == "t" or c == "T" then
-			style = THEME.status.permissions_x
+			style = permissions_x
 		end
 
 		style.bg = style_c.bg
@@ -338,15 +366,15 @@ function CreateCount()
 
 	local yanked_style, yanked_icon
 	if cx.yanked.is_cut then
-		yanked_style = THEME.manager.count_cut
-		yanked_icon = ""
+		yanked_style = cut_style
+		yanked_icon = cut_icon
 	else
-		yanked_style = THEME.manager.count_copied
-		yanked_icon = ""
+		yanked_style = copied_style
+		yanked_icon = copied_icon
 	end
 
-	local selected = ui.Span(string.format(" 󰻭 %d ", num_selected))
-	selected:style(THEME.manager.count_selected)
+	local selected = ui.Span(string.format(" %s %d ", selected_icon, num_selected))
+	selected:style(selected_style)
 	local selected_line = ui.Line{selected}
 
 	local yanked = ui.Span(string.format(" %s %d ", yanked_icon, num_yanked))
@@ -357,45 +385,153 @@ function CreateCount()
 	return ui.Line{selected_line, yanked_line}
 end
 
-return {
-	setup = function(st)
-		Header.render = function(self, area)
-			self.area = area
-			local left = ui.Line {
-				CreateTabs()
-			}
-			local right = ui.Line {
-				create_component_from_str(get_date("%X"), cx.active.mode, Side.RIGHT, ComponentType.B, SeparatorType.OUTER),
-				create_component_from_str(get_date("%A, %d %B %Y"), cx.active.mode, Side.RIGHT, ComponentType.A, SeparatorType.OUTER)
-			}
+--===============--
+-- Configuration --
+--===============--
 
-			return {
-				ui.Paragraph(area, { left }):style(style_c),
-				ui.Paragraph(area, { right }):align(ui.Paragraph.RIGHT),
-			}
+--- Automatically creates and configures either header-line
+--- or status-line according to their config.
+--- @param line Config Configuration of either header-line or status-line.
+--- @return table left_components Components array whose components are in left side of the line.
+--- @return table right_components Components array whose components are in right side of the line.
+local function config_line(line)
+	local left_components = {}
+	local pre_right_components = {}
+
+	for side, sections in pairs(line) do
+		local in_side, side_components
+		if side == "left" then
+			in_side = Side.LEFT
+			side_components = left_components
+		else
+			in_side = Side.RIGHT
+			side_components = pre_right_components
 		end
 
-		Status.render = function(self, area)
-			self.area = area
+		for _, section in ipairs(section_order) do
+			local components = sections[section]
+			local num_components = #components
 
-			local left = ui.Line {
-				create_component_from_str(get_tab_mode(), cx.active.mode, Side.LEFT, ComponentType.A, SeparatorType.OUTER),
-				create_component_from_str(get_hovered_size(), cx.active.mode, Side.LEFT, ComponentType.B, SeparatorType.OUTER),
-				create_component_from_str(get_hovered_name(), cx.active.mode, Side.LEFT, ComponentType.C, SeparatorType.INNER),
-				CreateCount()
-			}
-			local right = ui.Line {
-				CreatePermissions(),
-				create_component_from_str(get_hovered_file_extension(true), cx.active.mode, Side.RIGHT, ComponentType.C, SeparatorType.INNER),
-				create_component_from_str(get_cursor_percentage(), cx.active.mode, Side.RIGHT, ComponentType.B, SeparatorType.OUTER),
-				create_component_from_str(get_cursor_position(), cx.active.mode, Side.RIGHT, ComponentType.A, SeparatorType.OUTER),
-			}
+			local in_section
+			if section == "section_a" then
+				in_section = ComponentType.A
+			elseif section == "section_b" then
+				in_section = ComponentType.B
+			else
+				in_section = ComponentType.C
+			end
 
-			return {
-				ui.Paragraph(area, { left }):style(style_c),
-				ui.Paragraph(area, { right }):align(ui.Paragraph.RIGHT),
-				table.unpack(Progress:render(area, right:width())),
-			}
+			for j, component in ipairs(components) do
+				local in_part
+				if j == num_components then
+					in_part = SeparatorType.OUTER
+				else
+					in_part = SeparatorType.INNER
+				end
+
+				if component.type == "string" then
+					if component.custom then
+						side_components[#side_components + 1] = create_component_from_str(component.name, in_side, in_section, in_part)
+					else
+						local getter = get[component.name]
+
+						if component.params then
+							side_components[#side_components + 1] = create_component_from_str(getter(get, table.unpack(component.params)), in_side, in_section, in_part)
+						else
+							side_components[#side_components + 1] = create_component_from_str(getter(), in_side, in_section, in_part)
+						end
+					end
+				end
+			end
+		end
+	end
+
+	local right_components = {}
+	for i = #pre_right_components, 1, -1 do
+		right_components[#right_components + 1] = pre_right_components[i]
+	end
+
+	return left_components, right_components
+end
+
+---Checks if either header-line or status-line contains components.
+---@param line Config Configuration of either header-line or status-line.
+---@return boolean show_line Returns yes if it contains components, otherwise returns no.
+local function show_line(line)
+	local total_components = 0
+
+	for _, side in pairs(line) do
+		for _, section in pairs(side) do
+			total_components = total_components + #section
+		end
+	end
+
+	return total_components ~= 0
+end
+
+return {
+	setup = function(_, config)
+		section_separator_open = config.section_separator.open
+		section_separator_close = config.section_separator.close
+
+		part_separator_open = config.part_separator.open
+		part_separator_close = config.part_separator.close
+
+		style_a = { bg = config.style_a.bg_mode.normal, fg = config.style_a.fg }
+		style_b = config.style_b
+		style_c = config.style_c
+
+		style_a_normal_bg = config.style_a.bg_mode.normal
+		style_a_select_bg = config.style_a.bg_mode.select
+		style_a_un_set_bg = config.style_a.bg_mode.un_set
+
+		permissions_t = config.permissions_t
+		permissions_r = config.permissions_r
+		permissions_w = config.permissions_w
+		permissions_x = config.permissions_x
+		permissions_s = config.permissions_s
+
+		tab_width = config.tab_width
+
+		selected_icon = config.selected.icon
+		copied_icon = config.copied.icon
+		cut_icon = config.cut.icon
+
+		selected_style = config.selected.style
+		copied_style = config.copied.style
+		cut_style = config.cut.style
+
+		if show_line(config.header_line) then
+			Header.render = function(self, area)
+				self.area = area
+
+				local left_components, right_components = config_line(config.header_line)
+
+				local left_line = ui.Line(left_components)
+				local right_line = ui.Line(right_components)
+
+				return {
+					ui.Paragraph(area, { left_line }):style(style_c),
+					ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
+				}
+			end
+		end
+
+		if show_line(config.status_line) then
+			Status.render = function(self, area)
+				self.area = area
+
+				local left_components, right_components = config_line(config.status_line)
+
+				local left_line = ui.Line(left_components)
+				local right_line = ui.Line(right_components)
+
+				return {
+					ui.Paragraph(area, { left_line }):style(style_c),
+					ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
+					table.unpack(Progress:render(area, right_line:width())),
+				}
+			end
 		end
 	end,
 }
