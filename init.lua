@@ -154,7 +154,6 @@ end
 
 --- Creates a component from given string according to other parameters.
 --- @param string string The text which will be shown inside of the component.
---- @param mode Mode The mode of the active tab.
 --- @param side Side Left or right side of the either header-line or status-line.
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
 --- @param separator_type SeparatorType Where will there be a separator in the section.
@@ -163,9 +162,9 @@ end
 --- @see set_separator_style To know how separator style applied.
 --- @see set_component_style To know how component style applied.
 --- @see connect_separator To know how component and separator connected.
-local function create_component_from_str(string, mode, side, component_type, separator_type)
+local function create_component_from_str(string, side, component_type, separator_type)
 	local span = ui.Span(" " .. string .. " ")
-	set_mode_style(mode)
+	set_mode_style(cx.active.mode)
 	set_separator_style(separator_type, component_type)
 	set_component_style(span, component_type)
 	local line = connect_separator(span, side, separator_type)
@@ -432,14 +431,14 @@ local function config_line(line)
 
 				if component.type == "string" then
 					if component.custom then
-						side_components[#side_components + 1] = create_component_from_str(component.name, cx.active.mode, in_side, in_section, in_part)
+						side_components[#side_components + 1] = create_component_from_str(component.name, in_side, in_section, in_part)
 					else
 						local getter = get[component.name]
 
 						if component.params then
-							side_components[#side_components + 1] = create_component_from_str(getter(get, table.unpack(component.params)), cx.active.mode, in_side, in_section, in_part)
+							side_components[#side_components + 1] = create_component_from_str(getter(get, table.unpack(component.params)), in_side, in_section, in_part)
 						else
-							side_components[#side_components + 1] = create_component_from_str(getter(), cx.active.mode, in_side, in_section, in_part)
+							side_components[#side_components + 1] = create_component_from_str(getter(), in_side, in_section, in_part)
 						end
 					end
 				end
@@ -455,6 +454,21 @@ local function config_line(line)
 	return left_components, right_components
 end
 
+---Checks if either header-line or status-line contains components.
+---@param line Config Configuration of either header-line or status-line.
+---@return boolean show_line Returns yes if it contains components, otherwise returns no.
+local function show_line(line)
+	local total_components = 0
+
+	for _, side in pairs(line) do
+		for _, section in pairs(side) do
+			total_components = total_components + #section
+		end
+	end
+
+	return total_components ~= 0
+end
+
 return {
 	setup = function(_, config)
 		section_separator_open = config.section_separator.open
@@ -463,7 +477,7 @@ return {
 		part_separator_open = config.part_separator.open
 		part_separator_close = config.part_separator.close
 
-		style_a = { bg = config.style_a.bg_mode.normal, fg = config.style_a.fg}
+		style_a = { bg = config.style_a.bg_mode.normal, fg = config.style_a.fg }
 		style_b = config.style_b
 		style_c = config.style_c
 
@@ -487,33 +501,37 @@ return {
 		copied_style = config.copied.style
 		cut_style = config.cut.style
 
-		Header.render = function(self, area)
-			self.area = area
+		if show_line(config.header_line) then
+			Header.render = function(self, area)
+				self.area = area
 
-			local left_components, right_components = config_line(config.header_line)
+				local left_components, right_components = config_line(config.header_line)
 
-			local left_line = ui.Line(left_components)
-			local right_line = ui.Line(right_components)
+				local left_line = ui.Line(left_components)
+				local right_line = ui.Line(right_components)
 
-			return {
-				ui.Paragraph(area, { left_line }):style(style_c),
-				ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
-			}
+				return {
+					ui.Paragraph(area, { left_line }):style(style_c),
+					ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
+				}
+			end
 		end
 
-		Status.render = function(self, area)
-			self.area = area
+		if show_line(config.status_line) then
+			Status.render = function(self, area)
+				self.area = area
 
-			local left_components, right_components = config_line(config.status_line)
+				local left_components, right_components = config_line(config.status_line)
 
-			local left_line = ui.Line(left_components)
-			local right_line = ui.Line(right_components)
+				local left_line = ui.Line(left_components)
+				local right_line = ui.Line(right_components)
 
-			return {
-				ui.Paragraph(area, { left_line }):style(style_c),
-				ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
-				table.unpack(Progress:render(area, right_line:width())),
-			}
+				return {
+					ui.Paragraph(area, { left_line }):style(style_c),
+					ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
+					table.unpack(Progress:render(area, right_line:width())),
+				}
+			end
 		end
 	end,
 }
