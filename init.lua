@@ -2,6 +2,7 @@
 --- @alias Mode Mode Comes from Yazi.
 --- @alias Line Line Comes from Yazi.
 --- @alias Span Span Comes from Yazi.
+--- @alias Config Config The config used for setup.
 --- @alias Side # [ LEFT ... RIGHT ]
 --- | `enums.LEFT` # The left side of either the header-line or status-line. [ LEFT ... ]
 --- | `enums.RIGHT` # The right side of either the header-line or status-line. [ ... RIGHT]
@@ -58,6 +59,8 @@ local cut_icon
 local selected_style
 local copied_style
 local cut_style
+
+local section_order = {"section_a", "section_b", "section_c"}
 
 --=================--
 -- Component Setup --
@@ -191,15 +194,17 @@ end
 -- Getter Functions --
 --==================--
 
+local get = {}
+
 --- Gets the hovered file's name of the current active tab.
 --- @return string name Current active tab's hovered file's name.
-local function get_hovered_name()
+function get:hovered_name()
 	return cx.active.current.hovered.name
 end
 
 --- Gets the hovered file's size of the current active tab.
 --- @return string size Current active tab's hovered file's size.
-local function get_hovered_size()
+function get:hovered_size()
 	local h = cx.active.current.hovered
 
 	return ya.readable_size(h:size() or h.cha.length)
@@ -208,7 +213,7 @@ end
 --- Gets the hovered file's extension of the current active tab.
 --- @param show_icon boolean Whether or not an icon will be shown.
 --- @return string file_extension Current active tab's hovered file's extension.
-local function get_hovered_file_extension(show_icon)
+function get:hovered_file_extension(show_icon)
 	local file = cx.active.current.hovered
 	local cha = file.cha
 
@@ -229,7 +234,7 @@ end
 
 --- Gets the mode of active tab.
 --- @return string mode Active tab's mode.
-local function get_tab_mode()
+function get:tab_mode()
 	local mode = tostring(cx.active.mode):upper()
 	if mode == "UNSET" then
 		mode = "UN-SET"
@@ -240,7 +245,7 @@ end
 
 --- Gets the cursor position in the current active tab.
 --- @return string cursor_position Current active tab's cursor position.
-local function get_cursor_position()
+function get:cursor_position()
 	local cursor = cx.active.current.cursor
 	local length = #cx.active.current.files
 
@@ -249,7 +254,7 @@ end
 
 --- Gets the cursor position as percentage which is according to the number of files inside of current active tab.
 --- @return string percentage Percentage of current active tab's cursor position and number of percentages.
-local function get_cursor_percentage()
+function get:cursor_percentage()
 	local percentage = 0
 	local cursor = cx.active.current.cursor
 	local length = #cx.active.current.files
@@ -270,7 +275,7 @@ end
 --- @param format string Format for giving desired date or time values.
 --- @return string date Date or time values.
 --- @see os.date To see how format works.
-local function get_date(format)
+function get:date(format)
 	return tostring(os.date(format))
 end
 
@@ -381,6 +386,75 @@ function CreateCount()
 	return ui.Line{selected_line, yanked_line}
 end
 
+--===============--
+-- Configuration --
+--===============--
+
+--- Automatically creates and configures either header-line
+--- or status-line according to their config.
+--- @param line Config Configuration of either header-line or status-line.
+--- @return table left_components Components array whose components are in left side of the line.
+--- @return table right_components Components array whose components are in right side of the line.
+local function config_line(line)
+	local left_components = {}
+	local pre_right_components = {}
+
+	for side, sections in pairs(line) do
+		local in_side, side_components
+		if side == "left" then
+			in_side = Side.LEFT
+			side_components = left_components
+		else
+			in_side = Side.RIGHT
+			side_components = pre_right_components
+		end
+
+		for _, section in ipairs(section_order) do
+			local components = sections[section]
+			local num_components = #components
+
+			local in_section
+			if section == "section_a" then
+				in_section = ComponentType.A
+			elseif section == "section_b" then
+				in_section = ComponentType.B
+			else
+				in_section = ComponentType.C
+			end
+
+			for j, component in ipairs(components) do
+				local in_part
+				if j == num_components then
+					in_part = SeparatorType.OUTER
+				else
+					in_part = SeparatorType.INNER
+				end
+
+				if component.type == "string" then
+					if component.custom then
+						side_components[#side_components + 1] = create_component_from_str(component.name, cx.active.mode, in_side, in_section, in_part)
+					else
+						local getter = get[component.name]
+
+						if component.params then
+							side_components[#side_components + 1] = create_component_from_str(getter(get, table.unpack(component.params)), cx.active.mode, in_side, in_section, in_part)
+						else
+							side_components[#side_components + 1] = create_component_from_str(getter(), cx.active.mode, in_side, in_section, in_part)
+						end
+					end
+				end
+			end
+		end
+	end
+
+	local right_components = {}
+	for i = #pre_right_components, 1, -1 do
+		right_components[#right_components + 1] = pre_right_components[i]
+	end
+
+	return left_components, right_components
+end
+
 return {
 	setup = function(_, config)
 		section_separator_open = config.section_separator.open
@@ -416,40 +490,29 @@ return {
 		Header.render = function(self, area)
 			self.area = area
 
-			local left = ui.Line {
-				CreateTabs()
-			}
-			local right = ui.Line {
-				create_component_from_str(get_date("%X"), cx.active.mode, Side.RIGHT, ComponentType.B, SeparatorType.OUTER),
-				create_component_from_str(get_date("%A, %d %B %Y"), cx.active.mode, Side.RIGHT, ComponentType.A, SeparatorType.OUTER)
-			}
+			local left_components, right_components = config_line(config.header_line)
+
+			local left_line = ui.Line(left_components)
+			local right_line = ui.Line(right_components)
 
 			return {
-				ui.Paragraph(area, { left }):style(style_c),
-				ui.Paragraph(area, { right }):align(ui.Paragraph.RIGHT),
+				ui.Paragraph(area, { left_line }):style(style_c),
+				ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
 			}
 		end
 
 		Status.render = function(self, area)
 			self.area = area
 
-			local left = ui.Line {
-				create_component_from_str(get_tab_mode(), cx.active.mode, Side.LEFT, ComponentType.A, SeparatorType.OUTER),
-				create_component_from_str(get_hovered_size(), cx.active.mode, Side.LEFT, ComponentType.B, SeparatorType.OUTER),
-				create_component_from_str(get_hovered_name(), cx.active.mode, Side.LEFT, ComponentType.C, SeparatorType.INNER),
-				CreateCount()
-			}
-			local right = ui.Line {
-				CreatePermissions(),
-				create_component_from_str(get_hovered_file_extension(true), cx.active.mode, Side.RIGHT, ComponentType.C, SeparatorType.INNER),
-				create_component_from_str(get_cursor_percentage(), cx.active.mode, Side.RIGHT, ComponentType.B, SeparatorType.OUTER),
-				create_component_from_str(get_cursor_position(), cx.active.mode, Side.RIGHT, ComponentType.A, SeparatorType.OUTER),
-			}
+			local left_components, right_components = config_line(config.status_line)
+
+			local left_line = ui.Line(left_components)
+			local right_line = ui.Line(right_components)
 
 			return {
-				ui.Paragraph(area, { left }):style(style_c),
-				ui.Paragraph(area, { right }):align(ui.Paragraph.RIGHT),
-				table.unpack(Progress:render(area, right:width())),
+				ui.Paragraph(area, { left_line }):style(style_c),
+				ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
+				table.unpack(Progress:render(area, right_line:width())),
 			}
 		end
 	end,
