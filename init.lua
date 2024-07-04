@@ -315,9 +315,22 @@ end
 
 local create = {}
 
-function create:tabs()
+--- Creates and returns line component for tabs.
+--- @param side Side Left or right side of the either header-line or status-line.
+--- @return Line line Customized Line which contains tabs.
+--- @see set_mode_style To know how mode style selected.
+--- @see set_component_style To know how component style applied.
+--- @see connect_separator To know how component and separator connected.
+function create:tabs(side)
 	local tabs = #cx.tabs
 	local lines = {}
+
+	local in_side
+	if side == "left" then
+		in_side = Side.LEFT
+	else
+		in_side = Side.RIGHT
+	end
 
 	for i = 1, tabs do
 		local text = i
@@ -331,7 +344,7 @@ function create:tabs()
 			set_component_style(span, ComponentType.A)
 			separator_style.fg = style_a.bg
 			separator_style.bg = style_c.bg
-			lines[#lines + 1] = connect_separator(span, Side.LEFT, SeparatorType.OUTER)
+			lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.OUTER)
 		else
 			local span = ui.Span(" " .. text .. " ")
 			set_component_style(span, ComponentType.C)
@@ -340,15 +353,24 @@ function create:tabs()
 				set_mode_style(cx.tabs[i + 1].mode)
 				separator_style.fg = style_c.bg
 				separator_style.bg = style_a.bg
-				lines[#lines + 1] = connect_separator(span, Side.LEFT, SeparatorType.OUTER)
+				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.OUTER)
 			else
 				set_separator_style(SeparatorType.INNER, ComponentType.C)
-				lines[#lines + 1] = connect_separator(span, Side.LEFT, SeparatorType.INNER)
+				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.INNER)
 			end
 		end
 	end
 
-	return ui.Line(lines)
+	if in_side == Side.RIGHT then
+		local lines_in_right = {}
+		for i = #lines, 1, -1 do
+			lines_in_right[#lines_in_right + 1] = lines[i]
+		end
+
+		return ui.Line(lines_in_right)
+	else
+		return ui.Line(lines)
+	end
 end
 
 --====================--
@@ -483,7 +505,6 @@ local function config_line(line)
 							side_components[#side_components + 1] = create_component_from_str(getter(), in_side, in_section, in_part)
 						end
 					end
-
 				elseif component.type == "coloreds" then
 					if component.custom then
 						side_components[#side_components + 1] = create_component_from_coloreds(component.name, in_side, in_section, in_part)
@@ -494,6 +515,18 @@ local function config_line(line)
 							side_components[#side_components + 1] = create_component_from_coloreds(colorizer(colorize, table.unpack(component.params)), in_side, in_section, in_part)
 						else
 							side_components[#side_components + 1] = create_component_from_coloreds(colorizer(), in_side, in_section, in_part)
+						end
+					end
+				elseif component.type == "line" then
+					if component.custom then
+						side_components[#side_components + 1] = component.name
+					else
+						local creator = create[component.name]
+
+						if component.params then
+							side_components[#side_components + 1] = creator(create, table.unpack(component.params))
+						else
+							side_components[#side_components + 1] = creator()
 						end
 					end
 				end
