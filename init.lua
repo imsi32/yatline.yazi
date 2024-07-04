@@ -2,7 +2,9 @@
 --- @alias Mode Mode Comes from Yazi.
 --- @alias Line Line Comes from Yazi.
 --- @alias Span Span Comes from Yazi.
+--- @alias Color Color Comes from Yazi.
 --- @alias Config Config The config used for setup.
+--- @alias Coloreds Coloreds The array returned by colorizer in {{string, Color}, {string, Color} ... } format 
 --- @alias Side # [ LEFT ... RIGHT ]
 --- | `enums.LEFT` # The left side of either the header-line or status-line. [ LEFT ... ]
 --- | `enums.RIGHT` # The right side of either the header-line or status-line. [ ... RIGHT]
@@ -44,11 +46,11 @@ local style_a_normal_bg
 local style_a_select_bg
 local style_a_un_set_bg
 
-local permissions_t
-local permissions_r
-local permissions_w
-local permissions_x
-local permissions_s
+local permissions_t_fg
+local permissions_r_fg
+local permissions_w_fg
+local permissions_x_fg
+local permissions_s_fg
 
 local tab_width
 
@@ -56,9 +58,9 @@ local selected_icon
 local copied_icon
 local cut_icon
 
-local selected_style
-local copied_style
-local cut_style
+local selected_fg
+local copied_fg
+local cut_fg
 
 local section_order = {"section_a", "section_b", "section_c"}
 
@@ -112,8 +114,7 @@ local function set_separator_style(separator_type, component_type)
 	end
 end
 
-
----Sets the style of the component according to the its type.
+--- Sets the style of the component according to the its type.
 --- @param component Span Component that will be styled.
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
 --- @see Style To see how to style, in Yazi's documentation.
@@ -172,13 +173,43 @@ local function create_component_from_str(string, side, component_type, separator
 	return line
 end
 
+--- Creates a component from given Coloreds according to other parameters.
+--- The component it created, can contain multiple strings with different foreground color.
+--- @param coloreds Coloreds The array which contains an array which contains text which will be shown inside of the component and its foreground color.
+--- @param side Side Left or right side of the either header-line or status-line.
+--- @param component_type ComponentType Which section component will be in [ a | b | c ].
+--- @param separator_type SeparatorType Where will there be a separator in the section.
+--- @return Line line Customized Line which follows desired style of the parameters.
+--- @see set_mode_style To know how mode style selected.
+--- @see set_separator_style To know how separator style applied.
+--- @see set_component_style To know how component style applied.
+--- @see connect_separator To know how component and separator connected.
+local function create_component_from_coloreds(coloreds, side, component_type, separator_type)
+	set_mode_style(cx.active.mode)
+	set_separator_style(separator_type, component_type)
+
+	local spans = {}
+	for i, colored in ipairs(coloreds) do
+		local span = ui.Span(colored[1])
+		set_component_style(span, component_type)
+		span:fg(colored[2])
+
+		spans[i] = span
+	end
+
+	local spans_line = ui.Line(spans)
+	local line = connect_separator(spans_line, side, separator_type)
+
+	return line
+end
+
 --==================--
 -- Helper Functions --
 --==================--
 
 --- Gets the file name from given file extension.
----@param file_name string The name of a file whose extension will be taken.
----@return string file_extension Extension of a file.
+--- @param file_name string The name of a file whose extension will be taken.
+--- @return string file_extension Extension of a file.
 local function get_file_extension(file_name)
 	local extension = file_name:match("^.+%.(.+)$")
 
@@ -282,9 +313,24 @@ end
 -- Component Functions --
 --=====================--
 
-function CreateTabs()
+local create = {}
+
+--- Creates and returns line component for tabs.
+--- @param side Side Left or right side of the either header-line or status-line.
+--- @return Line line Customized Line which contains tabs.
+--- @see set_mode_style To know how mode style selected.
+--- @see set_component_style To know how component style applied.
+--- @see connect_separator To know how component and separator connected.
+function create:tabs(side)
 	local tabs = #cx.tabs
 	local lines = {}
+
+	local in_side
+	if side == "left" then
+		in_side = Side.LEFT
+	else
+		in_side = Side.RIGHT
+	end
 
 	for i = 1, tabs do
 		local text = i
@@ -298,7 +344,7 @@ function CreateTabs()
 			set_component_style(span, ComponentType.A)
 			separator_style.fg = style_a.bg
 			separator_style.bg = style_c.bg
-			lines[#lines + 1] = connect_separator(span, Side.LEFT, SeparatorType.OUTER)
+			lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.OUTER)
 		else
 			local span = ui.Span(" " .. text .. " ")
 			set_component_style(span, ComponentType.C)
@@ -307,82 +353,100 @@ function CreateTabs()
 				set_mode_style(cx.tabs[i + 1].mode)
 				separator_style.fg = style_c.bg
 				separator_style.bg = style_a.bg
-				lines[#lines + 1] = connect_separator(span, Side.LEFT, SeparatorType.OUTER)
+				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.OUTER)
 			else
 				set_separator_style(SeparatorType.INNER, ComponentType.C)
-				lines[#lines + 1] = connect_separator(span, Side.LEFT, SeparatorType.INNER)
+				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.INNER)
 			end
 		end
 	end
 
-	return ui.Line(lines)
+	if in_side == Side.RIGHT then
+		local lines_in_right = {}
+		for i = #lines, 1, -1 do
+			lines_in_right[#lines_in_right + 1] = lines[i]
+		end
+
+		return ui.Line(lines_in_right)
+	else
+		return ui.Line(lines)
+	end
 end
 
-function CreatePermissions()
+--====================--
+-- Coloreds Functions --
+--====================--
+
+local colorize = {}
+
+--- Gets the hovered file's permissions of the current active tab.
+--- @return Coloreds coloreds Current active tab's hovered file's permissions
+function colorize:permissions()
 	local h = cx.active.current.hovered
-	if not h then
-		return ui.Line {}
-	end
-
 	local perm = h.cha:permissions()
-	if not perm then
-		return ui.Line {}
-	end
 
-	local spans = {}
-	spans[1] = ui.Span(" ")
-	set_component_style(spans[1], ComponentType.C)
+	local coloreds = {}
+	coloreds[1] = {" ", "black"}
 
 	for i = 1, #perm do
 		local c = perm:sub(i, i)
 
-		local style = permissions_t
+		local fg = permissions_t_fg
 		if c == "-" then
-			style = permissions_s
+			fg = permissions_s_fg
 		elseif c == "r" then
-			style = permissions_r
+			fg = permissions_r_fg
 		elseif c == "w" then
-			style = permissions_w
+			fg = permissions_w_fg
 		elseif c == "x" or c == "s" or c == "S" or c == "t" or c == "T" then
-			style = permissions_x
+			fg = permissions_x_fg
 		end
 
-		style.bg = style_c.bg
-		spans[i + 1] = ui.Span(c):style(style)
+		coloreds[i + 1] = {c, fg}
 	end
 
-	spans[#perm + 2] = ui.Span(" ")
-	set_component_style(spans[#perm + 2], ComponentType.C)
-	set_separator_style(SeparatorType.OUTER, ComponentType.C)
-	local perm_line = ui.Line(spans)
-	local line = connect_separator(perm_line, Side.RIGHT, SeparatorType.INNER)
+	coloreds[#perm + 2] = {" ", "black"}
 
-	return line
+	return coloreds
 end
 
-function CreateCount()
+--- Gets the number of selected and yanked files of the active tab.
+--- @return Coloreds coloreds Active tab's number of selected and yanked files.
+function colorize:count()
 	local num_yanked = #cx.yanked
 	local num_selected = #cx.active.selected
 
-	local yanked_style, yanked_icon
+	local yanked_fg, yanked_icon
 	if cx.yanked.is_cut then
-		yanked_style = cut_style
+		yanked_fg= cut_fg
 		yanked_icon = cut_icon
 	else
-		yanked_style = copied_style
+		yanked_fg = copied_fg
 		yanked_icon = copied_icon
 	end
 
-	local selected = ui.Span(string.format(" %s %d ", selected_icon, num_selected))
-	selected:style(selected_style)
-	local selected_line = ui.Line{selected}
+	local coloreds = {
+		{ string.format(" %s %d ", selected_icon, num_selected), selected_fg },
+		{ string.format(" %s %d ", yanked_icon, num_yanked), yanked_fg }
+	}
 
-	local yanked = ui.Span(string.format(" %s %d ", yanked_icon, num_yanked))
-	yanked:style(yanked_style)
-	set_separator_style(SeparatorType.OUTER, ComponentType.C)
-	local yanked_line = connect_separator(yanked, Side.LEFT, SeparatorType.OUTER)
+	return coloreds
+end
 
-	return ui.Line{selected_line, yanked_line}
+--- Gets colored which contains string based component's string and desired foreground color.
+--- @param component_name string String based component's name.
+--- @param fg Color Desired foreground color.
+--- @param params table Array of parameters of string based component.
+--- @return Coloreds coloreds Array of solely array of string based component's string and desired foreground color.
+function colorize:string_based_component(component_name, fg, params)
+	local getter = get[component_name]
+	params = params or {}
+
+	if params then
+		return {{ getter(get, table.unpack(params)), fg }}
+	else
+		return {{ getter(), fg }}
+	end
 end
 
 --===============--
@@ -441,6 +505,30 @@ local function config_line(line)
 							side_components[#side_components + 1] = create_component_from_str(getter(), in_side, in_section, in_part)
 						end
 					end
+				elseif component.type == "coloreds" then
+					if component.custom then
+						side_components[#side_components + 1] = create_component_from_coloreds(component.name, in_side, in_section, in_part)
+					else
+						local colorizer = colorize[component.name]
+
+						if component.params then
+							side_components[#side_components + 1] = create_component_from_coloreds(colorizer(colorize, table.unpack(component.params)), in_side, in_section, in_part)
+						else
+							side_components[#side_components + 1] = create_component_from_coloreds(colorizer(), in_side, in_section, in_part)
+						end
+					end
+				elseif component.type == "line" then
+					if component.custom then
+						side_components[#side_components + 1] = component.name
+					else
+						local creator = create[component.name]
+
+						if component.params then
+							side_components[#side_components + 1] = creator(create, table.unpack(component.params))
+						else
+							side_components[#side_components + 1] = creator()
+						end
+					end
 				end
 			end
 		end
@@ -485,11 +573,11 @@ return {
 		style_a_select_bg = config.style_a.bg_mode.select
 		style_a_un_set_bg = config.style_a.bg_mode.un_set
 
-		permissions_t = config.permissions_t
-		permissions_r = config.permissions_r
-		permissions_w = config.permissions_w
-		permissions_x = config.permissions_x
-		permissions_s = config.permissions_s
+		permissions_t_fg = config.permissions_t_fg
+		permissions_r_fg = config.permissions_r_fg
+		permissions_w_fg = config.permissions_w_fg
+		permissions_x_fg = config.permissions_x_fg
+		permissions_s_fg = config.permissions_s_fg
 
 		tab_width = config.tab_width
 
@@ -497,9 +585,9 @@ return {
 		copied_icon = config.copied.icon
 		cut_icon = config.cut.icon
 
-		selected_style = config.selected.style
-		copied_style = config.copied.style
-		cut_style = config.cut.style
+		selected_fg = config.selected.fg
+		copied_fg = config.copied.fg
+		cut_fg = config.cut.fg
 
 		if show_line(config.header_line) then
 			Header.render = function(self, area)
