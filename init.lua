@@ -62,6 +62,18 @@ local selected_fg
 local copied_fg
 local cut_fg
 
+local task_total_icon
+local task_succ_icon
+local task_fail_icon
+local task_found_icon
+local task_processed_icon
+
+local task_total_fg
+local task_succ_fg
+local task_fail_fg
+local task_found_fg
+local task_processed_fg
+
 local section_order = {"section_a", "section_b", "section_c"}
 
 --=================--
@@ -237,6 +249,17 @@ function get:hovered_name()
 	end
 end
 
+--- Gets the hovered file's path of the current active tab.
+--- @return string path Current active tab's hovered file's path.
+function get:hovered_path()
+	local hovered = cx.active.current.hovered
+	if hovered then
+		return tostring(hovered.url)
+	else
+		return ""
+	end
+end
+
 --- Gets the hovered file's size of the current active tab.
 --- @return string size Current active tab's hovered file's size.
 function get:hovered_size()
@@ -246,7 +269,17 @@ function get:hovered_size()
 	else
 		return ""
 	end
+end
 
+--- Gets the hovered file's path of the current active tab.
+--- @return string mime Current active tab's hovered file's path.
+function get:hovered_mime()
+	local hovered = cx.active.current.hovered
+	if hovered then
+		return hovered:mime()
+	else
+		return ""
+	end
 end
 
 --- Gets the hovered file's extension of the current active tab.
@@ -277,6 +310,12 @@ function get:hovered_file_extension(show_icon)
 
 end
 
+--- Gets the path of the current active tab.
+--- @return string path Current active tab's path.
+function get:tab_path()
+	return cx.active.current.cwd
+end
+
 --- Gets the mode of active tab.
 --- @return string mode Active tab's mode.
 function get:tab_mode()
@@ -286,6 +325,12 @@ function get:tab_mode()
 	end
 
 	return mode
+end
+
+--- Gets the number of files in the current active tab.
+--- @return string num_files Number of files in the current active tab.
+function get:tab_num_files()
+	return tostring(#cx.active.current.files)
 end
 
 --- Gets the cursor position in the current active tab.
@@ -452,6 +497,33 @@ function colorize:count()
 	local coloreds = {
 		{ string.format(" %s %d ", selected_icon, num_selected), selected_fg },
 		{ string.format(" %s %d ", yanked_icon, num_yanked), yanked_fg }
+	}
+
+	return coloreds
+end
+
+--- Gets the number of task states.
+--- @return Coloreds coloreds Number of task states.
+function colorize:task_states()
+	local tasks = cx.tasks.progress
+
+	local coloreds = {
+		{ string.format(" %s %d ", task_total_icon, tasks.total), task_total_fg },
+		{ string.format(" %s %d ", task_succ_icon, tasks.succ), task_succ_fg },
+		{ string.format(" %s %d ", task_fail_icon, tasks.fail), task_fail_fg }
+	}
+
+	return coloreds
+end
+
+--- Gets the number of task workloads.
+--- @return Coloreds coloreds Number of task workloads.
+function colorize:task_workload()
+	local tasks = cx.tasks.progress
+
+	local coloreds = {
+		{ string.format(" %s %d ", task_found_icon, tasks.found), task_found_fg },
+		{ string.format(" %s %d ", task_processed_icon, tasks.processed), task_processed_fg },
 	}
 
 	return coloreds
@@ -647,6 +719,18 @@ return {
 		selected_fg = config.selected.fg
 		copied_fg = config.copied.fg
 		cut_fg = config.cut.fg
+
+		task_total_icon = config.total.icon
+		task_succ_icon = config.succ.icon
+		task_fail_icon = config.fail.icon
+		task_found_icon = config.found.icon
+		task_processed_icon = config.processed.icon
+
+		task_total_fg = config.total.fg
+		task_succ_fg = config.succ.fg
+		task_fail_fg = config.fail.fg
+		task_found_fg = config.found.fg
+		task_processed_fg = config.processed.fg
 
 		if show_line(config.header_line) then
 			Header.render = function(self, area)
