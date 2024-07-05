@@ -265,7 +265,7 @@ end
 function get:hovered_size()
 	local hovered = cx.active.current.hovered
 	if hovered then
-		return ya.readable_size(h:size() or h.cha.length)
+		return ya.readable_size(hovered:size() or hovered.cha.length)
 	else
 		return ""
 	end
