@@ -229,37 +229,52 @@ local get = {}
 --- Gets the hovered file's name of the current active tab.
 --- @return string name Current active tab's hovered file's name.
 function get:hovered_name()
-	return cx.active.current.hovered.name
+	local hovered = cx.active.current.hovered
+	if hovered then
+		return hovered.name
+	else
+		return ""
+	end
 end
 
 --- Gets the hovered file's size of the current active tab.
 --- @return string size Current active tab's hovered file's size.
 function get:hovered_size()
-	local h = cx.active.current.hovered
+	local hovered = cx.active.current.hovered
+	if hovered then
+		return ya.readable_size(h:size() or h.cha.length)
+	else
+		return ""
+	end
 
-	return ya.readable_size(h:size() or h.cha.length)
 end
 
 --- Gets the hovered file's extension of the current active tab.
 --- @param show_icon boolean Whether or not an icon will be shown.
 --- @return string file_extension Current active tab's hovered file's extension.
 function get:hovered_file_extension(show_icon)
-	local file = cx.active.current.hovered
-	local cha = file.cha
+	local hovered = cx.active.current.hovered
 
-	local name
-	if cha.is_dir then
-		name = "dir"
+	if hovered then
+		local cha = hovered.cha
+
+		local name
+		if cha.is_dir then
+			name = "dir"
+		else
+			name = get_file_extension(hovered.url:name())
+		end
+
+		if show_icon then
+			local icon = hovered:icon().text
+			return icon .. " " .. name
+		else
+			return name
+		end
 	else
-		name = get_file_extension(file.url:name())
+		return ""
 	end
 
-	if show_icon then
-		local icon = file:icon().text
-		return icon .. " " .. name
-	else
-		return name
-	end
 end
 
 --- Gets the mode of active tab.
@@ -279,7 +294,11 @@ function get:cursor_position()
 	local cursor = cx.active.current.cursor
 	local length = #cx.active.current.files
 
-	return string.format(" %2d/%-2d", cursor + 1, length)
+	if length ~= 0 then
+		return string.format(" %2d/%-2d", cursor + 1, length)
+	else
+		return "0"
+	end
 end
 
 --- Gets the cursor position as percentage which is according to the number of files inside of current active tab.
@@ -382,32 +401,37 @@ local colorize = {}
 --- Gets the hovered file's permissions of the current active tab.
 --- @return Coloreds coloreds Current active tab's hovered file's permissions
 function colorize:permissions()
-	local h = cx.active.current.hovered
-	local perm = h.cha:permissions()
+	local hovered = cx.active.current.hovered
 
-	local coloreds = {}
-	coloreds[1] = {" ", "black"}
+	if hovered then
+		local perm = hovered.cha:permissions()
 
-	for i = 1, #perm do
-		local c = perm:sub(i, i)
+		local coloreds = {}
+		coloreds[1] = {" ", "black"}
 
-		local fg = permissions_t_fg
-		if c == "-" then
-			fg = permissions_s_fg
-		elseif c == "r" then
-			fg = permissions_r_fg
-		elseif c == "w" then
-			fg = permissions_w_fg
-		elseif c == "x" or c == "s" or c == "S" or c == "t" or c == "T" then
-			fg = permissions_x_fg
+		for i = 1, #perm do
+			local c = perm:sub(i, i)
+
+			local fg = permissions_t_fg
+			if c == "-" then
+				fg = permissions_s_fg
+			elseif c == "r" then
+				fg = permissions_r_fg
+			elseif c == "w" then
+				fg = permissions_w_fg
+			elseif c == "x" or c == "s" or c == "S" or c == "t" or c == "T" then
+				fg = permissions_x_fg
+			end
+
+			coloreds[i + 1] = {c, fg}
 		end
 
-		coloreds[i + 1] = {c, fg}
+		coloreds[#perm + 2] = {" ", "black"}
+
+		return coloreds
+	else
+		return ""
 	end
-
-	coloreds[#perm + 2] = {" ", "black"}
-
-	return coloreds
 end
 
 --- Gets the number of selected and yanked files of the active tab.
