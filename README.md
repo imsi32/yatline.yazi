@@ -41,9 +41,15 @@ require("yatline"):setup({
 
 	tab_width = 20,
 
-	selected = { icon = "󰻭", fg = "#d79921" },
-	copied = { icon = "", fg = "#98971a" },
-	cut = { icon = "", fg = "#cc241d" },
+	selected = { icon = "󰻭", fg = "yellow" },
+	copied = { icon = "", fg = "green" },
+	cut = { icon = "", fg = "red" },
+
+	total = { icon = "󰮍", fg = "yellow" },
+	succ = { icon = "", fg = "green" },
+	fail = { icon = "", fg = "red" },
+	found = { icon = "󰮕", fg = "blue" },
+	processed = { icon = "󰐍", fg = "green" },
 
 	header_line = {
 		left = {
@@ -123,9 +129,15 @@ require("yatline"):setup({
 
 	tab_width = 20,
 
-	selected = { icon = "󰻭", fg = "#d79921" },
-	copied = { icon = "", fg = "#98971a" },
-	cut = { icon = "", fg = "#cc241d" },
+	selected = { icon = "󰻭", fg = "yellow" },
+	copied = { icon = "", fg = "green" },
+	cut = { icon = "", fg = "red" },
+
+	total = { icon = "󰮍", fg = "yellow" },
+	succ = { icon = "", fg = "green" },
+	fail = { icon = "", fg = "red" },
+	found = { icon = "󰮕", fg = "blue" },
+	processed = { icon = "󰐍", fg = "green" },
 
 	header_line = {
 		left = {
@@ -198,9 +210,15 @@ require("yatline"):setup({
 
 	tab_width = 20,
 
-	selected = { icon = "󰻭", fg = "#d79921" },
-	copied = { icon = "", fg = "#98971a" },
-	cut = { icon = "", fg = "#cc241d" },
+	selected = { icon = "󰻭", fg = "yellow" },
+	copied = { icon = "", fg = "green" },
+	cut = { icon = "", fg = "red" },
+
+	total = { icon = "󰮍", fg = "yellow" },
+	succ = { icon = "", fg = "green" },
+	fail = { icon = "", fg = "red" },
+	found = { icon = "󰮕", fg = "blue" },
+	processed = { icon = "󰐍", fg = "green" },
 
 	header_line = {
 		left = {

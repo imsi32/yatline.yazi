@@ -62,6 +62,18 @@ local selected_fg
 local copied_fg
 local cut_fg
 
+local task_total_icon
+local task_succ_icon
+local task_fail_icon
+local task_found_icon
+local task_processed_icon
+
+local task_total_fg
+local task_succ_fg
+local task_fail_fg
+local task_found_fg
+local task_processed_fg
+
 local section_order = {"section_a", "section_b", "section_c"}
 
 --=================--
@@ -237,6 +249,17 @@ function get:hovered_name()
 	end
 end
 
+--- Gets the hovered file's path of the current active tab.
+--- @return string path Current active tab's hovered file's path.
+function get:hovered_path()
+	local hovered = cx.active.current.hovered
+	if hovered then
+		return tostring(hovered.url)
+	else
+		return ""
+	end
+end
+
 --- Gets the hovered file's size of the current active tab.
 --- @return string size Current active tab's hovered file's size.
 function get:hovered_size()
@@ -246,7 +269,17 @@ function get:hovered_size()
 	else
 		return ""
 	end
+end
 
+--- Gets the hovered file's path of the current active tab.
+--- @return string mime Current active tab's hovered file's path.
+function get:hovered_mime()
+	local hovered = cx.active.current.hovered
+	if hovered then
+		return hovered:mime()
+	else
+		return ""
+	end
 end
 
 --- Gets the hovered file's extension of the current active tab.
@@ -277,6 +310,12 @@ function get:hovered_file_extension(show_icon)
 
 end
 
+--- Gets the path of the current active tab.
+--- @return string path Current active tab's path.
+function get:tab_path()
+	return cx.active.current.cwd
+end
+
 --- Gets the mode of active tab.
 --- @return string mode Active tab's mode.
 function get:tab_mode()
@@ -286,6 +325,12 @@ function get:tab_mode()
 	end
 
 	return mode
+end
+
+--- Gets the number of files in the current active tab.
+--- @return string num_files Number of files in the current active tab.
+function get:tab_num_files()
+	return tostring(#cx.active.current.files)
 end
 
 --- Gets the cursor position in the current active tab.
@@ -457,6 +502,33 @@ function colorize:count()
 	return coloreds
 end
 
+--- Gets the number of task states.
+--- @return Coloreds coloreds Number of task states.
+function colorize:task_states()
+	local tasks = cx.tasks.progress
+
+	local coloreds = {
+		{ string.format(" %s %d ", task_total_icon, tasks.total), task_total_fg },
+		{ string.format(" %s %d ", task_succ_icon, tasks.succ), task_succ_fg },
+		{ string.format(" %s %d ", task_fail_icon, tasks.fail), task_fail_fg }
+	}
+
+	return coloreds
+end
+
+--- Gets the number of task workloads.
+--- @return Coloreds coloreds Number of task workloads.
+function colorize:task_workload()
+	local tasks = cx.tasks.progress
+
+	local coloreds = {
+		{ string.format(" %s %d ", task_found_icon, tasks.found), task_found_fg },
+		{ string.format(" %s %d ", task_processed_icon, tasks.processed), task_processed_fg },
+	}
+
+	return coloreds
+end
+
 --- Gets colored which contains string based component's string and desired foreground color.
 --- @param component_name string String based component's name.
 --- @param fg Color Desired foreground color.
@@ -464,13 +536,25 @@ end
 --- @return Coloreds coloreds Array of solely array of string based component's string and desired foreground color.
 function colorize:string_based_component(component_name, fg, params)
 	local getter = get[component_name]
-	params = params or {}
 
-	if params then
-		return {{ getter(get, table.unpack(params)), fg }}
+	if getter then
+		local output
+		if params then
+			output = getter(get, table.unpack(params))
+		else
+			output = getter()
+		end
+
+
+		if output ~= nil and output ~= "" then
+			return {{ output, fg }}
+		else
+			return ""
+		end
 	else
-		return {{ getter(), fg }}
+		return ""
 	end
+
 end
 
 --===============--
@@ -523,11 +607,19 @@ local function config_line(line)
 					else
 						local getter = get[component.name]
 
-						if component.params then
-							side_components[#side_components + 1] = create_component_from_str(getter(get, table.unpack(component.params)), in_side, in_section, in_part)
-						else
-							side_components[#side_components + 1] = create_component_from_str(getter(), in_side, in_section, in_part)
+						if getter then
+							local output
+							if component.params then
+								output = getter(get, table.unpack(component.params))
+							else
+								output = getter()
+							end
+
+							if output ~= nil and output ~= "" then
+								side_components[#side_components + 1] = create_component_from_str(output, in_side, in_section, in_part)
+							end
 						end
+
 					end
 				elseif component.type == "coloreds" then
 					if component.custom then
@@ -535,11 +627,19 @@ local function config_line(line)
 					else
 						local colorizer = colorize[component.name]
 
-						if component.params then
-							side_components[#side_components + 1] = create_component_from_coloreds(colorizer(colorize, table.unpack(component.params)), in_side, in_section, in_part)
-						else
-							side_components[#side_components + 1] = create_component_from_coloreds(colorizer(), in_side, in_section, in_part)
+						if colorizer then
+							local output
+							if component.params then
+								output = colorizer(colorize, table.unpack(component.params))
+							else
+								output = colorizer()
+							end
+
+							if output ~= nil and output ~= "" then
+								side_components[#side_components + 1] = create_component_from_coloreds(output, in_side, in_section, in_part)
+							end
 						end
+
 					end
 				elseif component.type == "line" then
 					if component.custom then
@@ -547,10 +647,17 @@ local function config_line(line)
 					else
 						local creator = create[component.name]
 
-						if component.params then
-							side_components[#side_components + 1] = creator(create, table.unpack(component.params))
-						else
-							side_components[#side_components + 1] = creator()
+						if creator then
+							local output
+							if component.params then
+								output = creator(create, table.unpack(component.params))
+							else
+								output = creator()
+							end
+
+							if output then
+								side_components[#side_components + 1] = output
+							end
 						end
 					end
 				end
@@ -612,6 +719,18 @@ return {
 		selected_fg = config.selected.fg
 		copied_fg = config.copied.fg
 		cut_fg = config.cut.fg
+
+		task_total_icon = config.total.icon
+		task_succ_icon = config.succ.icon
+		task_fail_icon = config.fail.icon
+		task_found_icon = config.found.icon
+		task_processed_icon = config.processed.icon
+
+		task_total_fg = config.total.fg
+		task_succ_fg = config.succ.fg
+		task_fail_fg = config.fail.fg
+		task_found_fg = config.found.fg
+		task_processed_fg = config.processed.fg
 
 		if show_line(config.header_line) then
 			Header.render = function(self, area)
