@@ -179,7 +179,7 @@ require("yatline"):setup({
 			}
 		}
 	},
-}
+})
 ```
 
 ### Only Status-line Config
@@ -262,7 +262,7 @@ require("yatline"):setup({
 			}
 		}
 	},
-}
+})
 ```
 
 ## Features
