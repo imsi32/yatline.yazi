@@ -464,13 +464,25 @@ end
 --- @return Coloreds coloreds Array of solely array of string based component's string and desired foreground color.
 function colorize:string_based_component(component_name, fg, params)
 	local getter = get[component_name]
-	params = params or {}
 
-	if params then
-		return {{ getter(get, table.unpack(params)), fg }}
+	if getter then
+		local output
+		if params then
+			output = getter(get, table.unpack(params))
+		else
+			output = getter()
+		end
+
+
+		if output ~= nil and output ~= "" then
+			return {{ output, fg }}
+		else
+			return ""
+		end
 	else
-		return {{ getter(), fg }}
+		return ""
 	end
+
 end
 
 --===============--
@@ -523,11 +535,19 @@ local function config_line(line)
 					else
 						local getter = get[component.name]
 
-						if component.params then
-							side_components[#side_components + 1] = create_component_from_str(getter(get, table.unpack(component.params)), in_side, in_section, in_part)
-						else
-							side_components[#side_components + 1] = create_component_from_str(getter(), in_side, in_section, in_part)
+						if getter then
+							local output
+							if component.params then
+								output = getter(get, table.unpack(component.params))
+							else
+								output = getter()
+							end
+
+							if output ~= nil and output ~= "" then
+								side_components[#side_components + 1] = create_component_from_str(output, in_side, in_section, in_part)
+							end
 						end
+
 					end
 				elseif component.type == "coloreds" then
 					if component.custom then
@@ -535,11 +555,19 @@ local function config_line(line)
 					else
 						local colorizer = colorize[component.name]
 
-						if component.params then
-							side_components[#side_components + 1] = create_component_from_coloreds(colorizer(colorize, table.unpack(component.params)), in_side, in_section, in_part)
-						else
-							side_components[#side_components + 1] = create_component_from_coloreds(colorizer(), in_side, in_section, in_part)
+						if colorizer then
+							local output
+							if component.params then
+								output = colorizer(colorize, table.unpack(component.params))
+							else
+								output = colorizer()
+							end
+
+							if output ~= nil and output ~= "" then
+								side_components[#side_components + 1] = create_component_from_coloreds(output, in_side, in_section, in_part)
+							end
 						end
+
 					end
 				elseif component.type == "line" then
 					if component.custom then
@@ -547,10 +575,17 @@ local function config_line(line)
 					else
 						local creator = create[component.name]
 
-						if component.params then
-							side_components[#side_components + 1] = creator(create, table.unpack(component.params))
-						else
-							side_components[#side_components + 1] = creator()
+						if creator then
+							local output
+							if component.params then
+								output = creator(create, table.unpack(component.params))
+							else
+								output = creator()
+							end
+
+							if output then
+								side_components[#side_components + 1] = output
+							end
 						end
 					end
 				end
