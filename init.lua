@@ -732,6 +732,33 @@ return {
 		task_found_fg = config.found.fg
 		task_processed_fg = config.processed.fg
 
+		Progress.partial_render = function(self)
+
+			local progress = cx.tasks.progress
+			if progress.total == 0 then
+				return { ui.Paragraph(self.area, {}):style(style_c) }
+			end
+
+			local gauge = ui.Gauge(self.area)
+			if progress.fail == 0 then
+				gauge = gauge:gauge_style(THEME.status.progress_normal)
+			else
+				gauge = gauge:gauge_style(THEME.status.progress_error)
+			end
+
+			local percent = 99
+			if progress.found ~= 0 then
+				percent = math.min(99, ya.round(progress.processed * 100 / progress.found))
+			end
+
+			local left = progress.total - progress.succ
+			return {
+				gauge
+				:percent(percent)
+				:label(ui.Span(string.format("%3d%%, %d left", percent, left)):style(THEME.status.progress_label)),
+			}
+		end
+
 		if show_line(config.header_line) then
 			Header.render = function(self, area)
 				self.area = area
