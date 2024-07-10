@@ -1,5 +1,7 @@
 --- @diagnostic disable: undefined-global
 --- @alias Mode Mode Comes from Yazi.
+--- @alias Rect Rect Comes from Yazi.
+--- @alias Paragraph Paragraph Comes from Yazi.
 --- @alias Line Line Comes from Yazi.
 --- @alias Span Span Comes from Yazi.
 --- @alias Color Color Comes from Yazi.
@@ -36,7 +38,7 @@ local section_separator_close
 local part_separator_open
 local part_separator_close
 
-local separator_style = { bg = "black", fg = "black" }
+local separator_style = { bg = nil, fg = nil }
 
 local style_a
 local style_b
@@ -74,6 +76,8 @@ local task_fail_fg
 local task_found_fg
 local task_processed_fg
 
+local show_background
+
 local section_order = {"section_a", "section_b", "section_c"}
 
 --=================--
@@ -101,6 +105,7 @@ end
 --- @param separator_type SeparatorType Where will there be a separator in the section.
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
 local function set_separator_style(separator_type, component_type)
+	separator_style = { bg = nil, fg = nil }
 	if separator_type == SeparatorType.OUTER then
 		if component_type == ComponentType.A then
 			separator_style.bg = style_b.bg
@@ -109,8 +114,10 @@ local function set_separator_style(separator_type, component_type)
 			separator_style.bg = style_c.bg
 			separator_style.fg = style_b.bg
 		else
-			separator_style.bg = style_c.bg
 			separator_style.fg = style_c.bg
+			if show_background then
+				separator_style.bg = style_c.bg
+			end
 		end
 	else
 		if component_type == ComponentType.A then
@@ -411,7 +418,11 @@ function create:tabs(side)
 			lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.OUTER)
 		else
 			local span = ui.Span(" " .. text .. " ")
-			set_component_style(span, ComponentType.C)
+			if show_background then
+				set_component_style(span, ComponentType.C)
+			else
+				span:style({fg = style_c.fg})
+			end
 
 			if i == cx.tabs.idx - 1 then
 				set_mode_style(cx.tabs[i + 1].mode)
@@ -532,7 +543,7 @@ end
 --- Gets colored which contains string based component's string and desired foreground color.
 --- @param component_name string String based component's name.
 --- @param fg Color Desired foreground color.
---- @param params table Array of parameters of string based component.
+--- @param params? table Array of parameters of string based component. It is optional.
 --- @return Coloreds coloreds Array of solely array of string based component's string and desired foreground color.
 function colorize:string_based_component(component_name, fg, params)
 	local getter = get[component_name]
@@ -673,9 +684,9 @@ local function config_line(line)
 	return left_components, right_components
 end
 
----Checks if either header-line or status-line contains components.
----@param line Config Configuration of either header-line or status-line.
----@return boolean show_line Returns yes if it contains components, otherwise returns no.
+--- Checks if either header-line or status-line contains components.
+--- @param line Config Configuration of either header-line or status-line.
+--- @return boolean show_line Returns yes if it contains components, otherwise returns no.
 local function show_line(line)
 	local total_components = 0
 
@@ -686,6 +697,26 @@ local function show_line(line)
 	end
 
 	return total_components ~= 0
+end
+--- Creates and configures paragraph which is used as left or right of either
+--- header-line or status-line.
+--- @param area Rect The area where paragraph will be placed in.
+--- @param line? Line The line which used in paragraph. It is optional.
+--- @return Paragraph paragraph Configured parapgraph.
+local function config_paragraph(area, line)
+	if line then
+		if show_background then
+			return ui.Paragraph(area, { line }):style(style_c)
+		else
+			return ui.Paragraph(area, { line })
+		end
+	else
+		if show_background then
+			return ui.Paragraph(area, {}):style(style_c)
+		else
+			return ui.Paragraph(area, {})
+		end
+	end
 end
 
 return {
@@ -732,11 +763,12 @@ return {
 		task_found_fg = config.found.fg
 		task_processed_fg = config.processed.fg
 
-		Progress.partial_render = function(self)
+		show_background = config.show_background
 
+		Progress.partial_render = function(self)
 			local progress = cx.tasks.progress
 			if progress.total == 0 then
-				return { ui.Paragraph(self.area, {}):style(style_c) }
+				return { config_paragraph(self.area) }
 			end
 
 			local gauge = ui.Gauge(self.area)
@@ -769,7 +801,7 @@ return {
 				local right_line = ui.Line(right_components)
 
 				return {
-					ui.Paragraph(area, { left_line }):style(style_c),
+					config_paragraph(area, left_line),
 					ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
 				}
 			end
@@ -785,7 +817,7 @@ return {
 				local right_line = ui.Line(right_components)
 
 				return {
-					ui.Paragraph(area, { left_line }):style(style_c),
+					config_paragraph(area, left_line),
 					ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
 					table.unpack(Progress:render(area, right_line:width())),
 				}
