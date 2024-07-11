@@ -1,10 +1,12 @@
---- @diagnostic disable: undefined-global
+--- @diagnostic disable: undefined-global, undefined-field
 --- @alias Mode Mode Comes from Yazi.
+--- @alias Rect Rect Comes from Yazi.
+--- @alias Paragraph Paragraph Comes from Yazi.
 --- @alias Line Line Comes from Yazi.
 --- @alias Span Span Comes from Yazi.
 --- @alias Color Color Comes from Yazi.
 --- @alias Config Config The config used for setup.
---- @alias Coloreds Coloreds The array returned by colorizer in {{string, Color}, {string, Color} ... } format 
+--- @alias Coloreds Coloreds The array returned by colorizer in {{string, Color}, {string, Color} ... } format
 --- @alias Side # [ LEFT ... RIGHT ]
 --- | `enums.LEFT` # The left side of either the header-line or status-line. [ LEFT ... ]
 --- | `enums.RIGHT` # The right side of either the header-line or status-line. [ ... RIGHT]
@@ -33,10 +35,13 @@ os.setlocale("")
 local section_separator_open
 local section_separator_close
 
+local inverse_separator_open
+local inverse_separator_close
+
 local part_separator_open
 local part_separator_close
 
-local separator_style = { bg = "black", fg = "black" }
+local separator_style = { bg = nil, fg = nil }
 
 local style_a
 local style_b
@@ -53,6 +58,7 @@ local permissions_x_fg
 local permissions_s_fg
 
 local tab_width
+local tab_use_inverse
 
 local selected_icon
 local copied_icon
@@ -74,7 +80,12 @@ local task_fail_fg
 local task_found_fg
 local task_processed_fg
 
-local section_order = {"section_a", "section_b", "section_c"}
+local show_background
+
+local display_header_line
+local display_status_line
+
+local section_order = { "section_a", "section_b", "section_c" }
 
 --=================--
 -- Component Setup --
@@ -101,6 +112,7 @@ end
 --- @param separator_type SeparatorType Where will there be a separator in the section.
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
 local function set_separator_style(separator_type, component_type)
+	separator_style = { bg = nil, fg = nil }
 	if separator_type == SeparatorType.OUTER then
 		if component_type == ComponentType.A then
 			separator_style.bg = style_b.bg
@@ -109,8 +121,10 @@ local function set_separator_style(separator_type, component_type)
 			separator_style.bg = style_c.bg
 			separator_style.fg = style_b.bg
 		else
-			separator_style.bg = style_c.bg
 			separator_style.fg = style_c.bg
+			if show_background then
+				separator_style.bg = style_c.bg
+			end
 		end
 	else
 		if component_type == ComponentType.A then
@@ -159,46 +173,39 @@ local function connect_separator(component, side, separator_type)
 	close:style(separator_style)
 
 	if side == Side.LEFT then
-		return ui.Line{component, close}
+		return ui.Line { component, close }
 	else
-		return ui.Line{open, component}
+		return ui.Line { open, component }
 	end
 end
 
 --- Creates a component from given string according to other parameters.
 --- @param string string The text which will be shown inside of the component.
---- @param side Side Left or right side of the either header-line or status-line.
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
---- @param separator_type SeparatorType Where will there be a separator in the section.
 --- @return Line line Customized Line which follows desired style of the parameters.
 --- @see set_mode_style To know how mode style selected.
 --- @see set_separator_style To know how separator style applied.
 --- @see set_component_style To know how component style applied.
 --- @see connect_separator To know how component and separator connected.
-local function create_component_from_str(string, side, component_type, separator_type)
+local function create_component_from_str(string, component_type)
 	local span = ui.Span(" " .. string .. " ")
 	set_mode_style(cx.active.mode)
-	set_separator_style(separator_type, component_type)
 	set_component_style(span, component_type)
-	local line = connect_separator(span, side, separator_type)
 
-	return line
+	return ui.Line{span}
 end
 
 --- Creates a component from given Coloreds according to other parameters.
 --- The component it created, can contain multiple strings with different foreground color.
 --- @param coloreds Coloreds The array which contains an array which contains text which will be shown inside of the component and its foreground color.
---- @param side Side Left or right side of the either header-line or status-line.
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
---- @param separator_type SeparatorType Where will there be a separator in the section.
 --- @return Line line Customized Line which follows desired style of the parameters.
 --- @see set_mode_style To know how mode style selected.
 --- @see set_separator_style To know how separator style applied.
 --- @see set_component_style To know how component style applied.
 --- @see connect_separator To know how component and separator connected.
-local function create_component_from_coloreds(coloreds, side, component_type, separator_type)
+local function create_component_from_coloreds(coloreds, component_type)
 	set_mode_style(cx.active.mode)
-	set_separator_style(separator_type, component_type)
 
 	local spans = {}
 	for i, colored in ipairs(coloreds) do
@@ -209,10 +216,7 @@ local function create_component_from_coloreds(coloreds, side, component_type, se
 		spans[i] = span
 	end
 
-	local spans_line = ui.Line(spans)
-	local line = connect_separator(spans_line, side, separator_type)
-
-	return line
+	return ui.Line(spans)
 end
 
 --==================--
@@ -230,6 +234,18 @@ local function get_file_extension(file_name)
 	else
 		return extension
 	end
+end
+
+--- Reverse the order of given array
+--- @param array Line Array which wants to be reversed.
+--- @return table reversed Reversed ordered given array.
+local function reverse_order(array)
+	local reversed = {}
+	for i = #array, 1, -1 do
+		table.insert(reversed, array[i])
+	end
+
+	return reversed
 end
 
 --==================--
@@ -307,7 +323,6 @@ function get:hovered_file_extension(show_icon)
 	else
 		return ""
 	end
-
 end
 
 --- Gets the path of the current active tab.
@@ -402,24 +417,62 @@ function create:tabs(side)
 			text = ya.truncate(text .. " " .. cx.tabs[i]:name(), { max = tab_width })
 		end
 
+		separator_style = { bg = nil, fg = nil }
 		if i == cx.tabs.idx then
 			local span = ui.Span(" " .. text .. " ")
 			set_mode_style(cx.tabs[i].mode)
 			set_component_style(span, ComponentType.A)
+
 			separator_style.fg = style_a.bg
-			separator_style.bg = style_c.bg
+			if show_background then
+				separator_style.bg = style_c.bg
+			end
+
 			lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.OUTER)
 		else
 			local span = ui.Span(" " .. text .. " ")
-			set_component_style(span, ComponentType.C)
+			if show_background then
+				set_component_style(span, ComponentType.C)
+			else
+				span:style({ fg = style_c.fg })
+			end
 
 			if i == cx.tabs.idx - 1 then
 				set_mode_style(cx.tabs[i + 1].mode)
-				separator_style.fg = style_c.bg
-				separator_style.bg = style_a.bg
-				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.OUTER)
+
+				local open, close
+				if tab_use_inverse then
+					separator_style.fg = style_a.bg
+					if show_background then
+						separator_style.bg = style_c.bg
+					end
+
+					open = ui.Span(inverse_separator_open)
+					close = ui.Span(inverse_separator_close)
+				else
+					separator_style.bg = style_a.bg
+					if show_background then
+						separator_style.fg = style_c.bg
+					end
+
+					open = ui.Span(section_separator_open)
+					close = ui.Span(section_separator_close)
+				end
+
+				open:style(separator_style)
+				close:style(separator_style)
+
+				if in_side == Side.LEFT then
+					lines[#lines + 1] = ui.Line { span, close }
+				else
+					lines[#lines + 1] = ui.Line { open, span }
+				end
 			else
-				set_separator_style(SeparatorType.INNER, ComponentType.C)
+				separator_style.fg = style_c.fg
+				if show_background then
+					separator_style.bg = style_c.bg
+				end
+
 				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.INNER)
 			end
 		end
@@ -452,7 +505,7 @@ function colorize:permissions()
 		local perm = hovered.cha:permissions()
 
 		local coloreds = {}
-		coloreds[1] = {" ", "black"}
+		coloreds[1] = { " ", "black" }
 
 		for i = 1, #perm do
 			local c = perm:sub(i, i)
@@ -468,10 +521,10 @@ function colorize:permissions()
 				fg = permissions_x_fg
 			end
 
-			coloreds[i + 1] = {c, fg}
+			coloreds[i + 1] = { c, fg }
 		end
 
-		coloreds[#perm + 2] = {" ", "black"}
+		coloreds[#perm + 2] = { " ", "black" }
 
 		return coloreds
 	else
@@ -487,7 +540,7 @@ function colorize:count()
 
 	local yanked_fg, yanked_icon
 	if cx.yanked.is_cut then
-		yanked_fg= cut_fg
+		yanked_fg = cut_fg
 		yanked_icon = cut_icon
 	else
 		yanked_fg = copied_fg
@@ -496,7 +549,7 @@ function colorize:count()
 
 	local coloreds = {
 		{ string.format(" %s %d ", selected_icon, num_selected), selected_fg },
-		{ string.format(" %s %d ", yanked_icon, num_yanked), yanked_fg }
+		{ string.format(" %s %d ", yanked_icon, num_yanked),     yanked_fg }
 	}
 
 	return coloreds
@@ -509,8 +562,8 @@ function colorize:task_states()
 
 	local coloreds = {
 		{ string.format(" %s %d ", task_total_icon, tasks.total), task_total_fg },
-		{ string.format(" %s %d ", task_succ_icon, tasks.succ), task_succ_fg },
-		{ string.format(" %s %d ", task_fail_icon, tasks.fail), task_fail_fg }
+		{ string.format(" %s %d ", task_succ_icon, tasks.succ),   task_succ_fg },
+		{ string.format(" %s %d ", task_fail_icon, tasks.fail),   task_fail_fg }
 	}
 
 	return coloreds
@@ -522,7 +575,7 @@ function colorize:task_workload()
 	local tasks = cx.tasks.progress
 
 	local coloreds = {
-		{ string.format(" %s %d ", task_found_icon, tasks.found), task_found_fg },
+		{ string.format(" %s %d ", task_found_icon, tasks.found),         task_found_fg },
 		{ string.format(" %s %d ", task_processed_icon, tasks.processed), task_processed_fg },
 	}
 
@@ -532,7 +585,7 @@ end
 --- Gets colored which contains string based component's string and desired foreground color.
 --- @param component_name string String based component's name.
 --- @param fg Color Desired foreground color.
---- @param params table Array of parameters of string based component.
+--- @param params? table Array of parameters of string based component. It is optional.
 --- @return Coloreds coloreds Array of solely array of string based component's string and desired foreground color.
 function colorize:string_based_component(component_name, fg, params)
 	local getter = get[component_name]
@@ -547,135 +600,285 @@ function colorize:string_based_component(component_name, fg, params)
 
 
 		if output ~= nil and output ~= "" then
-			return {{ output, fg }}
+			return { { output, fg } }
 		else
 			return ""
 		end
 	else
 		return ""
 	end
-
 end
 
 --===============--
 -- Configuration --
 --===============--
 
---- Automatically creates and configures either header-line
---- or status-line according to their config.
---- @param line Config Configuration of either header-line or status-line.
---- @return table left_components Components array whose components are in left side of the line.
---- @return table right_components Components array whose components are in right side of the line.
-local function config_line(line)
-	local left_components = {}
-	local pre_right_components = {}
+--- Connects given components with configured separator
+--- @param section_a_components table Components array whose components are in section-a of either side.
+--- @param section_b_components table Components array whose components are in section-b of either side.
+--- @param section_c_components table Components array whose components are in section-c of either side.
+--- @param side Side Left or right side of the either header-line or status-line.
+--- @return table section_a_line_components Array of components whose components are connected to separator and are in section-a of either side.
+--- @return table section_b_line_components Array of components whose components are connected to separator and are in section-b of either side.
+--- @return table section_c_line_components Array of components whose components are connected to separator and are in section-c of either side.
+local function config_separator(section_a_components, section_b_components, section_c_components, side)
+	local num_section_a_components = #section_a_components
+	local num_section_b_components = #section_b_components
+	local num_section_c_components = #section_c_components
 
-	for side, sections in pairs(line) do
-		local in_side, side_components
-		if side == "left" then
-			in_side = Side.LEFT
-			side_components = left_components
-		else
-			in_side = Side.RIGHT
-			side_components = pre_right_components
-		end
+	local section_a_line_components = {}
+	for i, component in ipairs(section_a_components) do
+		if component[2] == true then
+			separator_style = { bg = nil, fg = nil }
 
-		for _, section in ipairs(section_order) do
-			local components = sections[section]
-			local num_components = #components
+			local open, close
+			if i ~= num_section_a_components then
+				separator_style.bg = style_a.bg
+				separator_style.fg = style_a.fg
 
-			local in_section
-			if section == "section_a" then
-				in_section = ComponentType.A
-			elseif section == "section_b" then
-				in_section = ComponentType.B
+				open = ui.Span(part_separator_open)
+				close = ui.Span(part_separator_close)
 			else
-				in_section = ComponentType.C
+				separator_style.fg = style_a.bg
+
+				if num_section_b_components == 0 and num_section_c_components == 0 then
+					if show_background then
+						separator_style.bg = style_c.bg
+					end
+				elseif num_section_b_components == 0 then
+					separator_style.bg = style_c.bg
+				else
+					separator_style.bg = style_b.bg
+				end
+
+				open = ui.Span(section_separator_open)
+				close = ui.Span(section_separator_close)
 			end
 
-			for j, component in ipairs(components) do
-				local in_part
-				if j == num_components then
-					in_part = SeparatorType.OUTER
-				else
-					in_part = SeparatorType.INNER
-				end
+			open:style(separator_style)
+			close:style(separator_style)
 
-				if component.type == "string" then
-					if component.custom then
-						side_components[#side_components + 1] = create_component_from_str(component.name, in_side, in_section, in_part)
-					else
-						local getter = get[component.name]
-
-						if getter then
-							local output
-							if component.params then
-								output = getter(get, table.unpack(component.params))
-							else
-								output = getter()
-							end
-
-							if output ~= nil and output ~= "" then
-								side_components[#side_components + 1] = create_component_from_str(output, in_side, in_section, in_part)
-							end
-						end
-
-					end
-				elseif component.type == "coloreds" then
-					if component.custom then
-						side_components[#side_components + 1] = create_component_from_coloreds(component.name, in_side, in_section, in_part)
-					else
-						local colorizer = colorize[component.name]
-
-						if colorizer then
-							local output
-							if component.params then
-								output = colorizer(colorize, table.unpack(component.params))
-							else
-								output = colorizer()
-							end
-
-							if output ~= nil and output ~= "" then
-								side_components[#side_components + 1] = create_component_from_coloreds(output, in_side, in_section, in_part)
-							end
-						end
-
-					end
-				elseif component.type == "line" then
-					if component.custom then
-						side_components[#side_components + 1] = component.name
-					else
-						local creator = create[component.name]
-
-						if creator then
-							local output
-							if component.params then
-								output = creator(create, table.unpack(component.params))
-							else
-								output = creator()
-							end
-
-							if output then
-								side_components[#side_components + 1] = output
-							end
-						end
-					end
-				end
+			if side == Side.LEFT then
+				section_a_line_components[i] = ui.Line { component[1], close }
+			else
+				section_a_line_components[i] = ui.Line { open, component[1] }
+			end
+		else
+			if side == Side.LEFT then
+				section_a_line_components[i] = component[1]
+			else
+				section_a_line_components[i] = component[1]
 			end
 		end
 	end
 
-	local right_components = {}
-	for i = #pre_right_components, 1, -1 do
-		right_components[#right_components + 1] = pre_right_components[i]
+	local section_b_line_components = {}
+	for i, component in ipairs(section_b_components) do
+		if component[2] == true then
+			separator_style = { bg = nil, fg = nil }
+
+			local open, close
+			if i ~= num_section_b_components then
+				separator_style.bg = style_b.bg
+				separator_style.fg = style_b.fg
+
+				open = ui.Span(part_separator_open)
+				close = ui.Span(part_separator_close)
+			else
+				separator_style.fg = style_b.bg
+
+				if num_section_c_components == 0 then
+					if show_background then
+						separator_style.bg = style_c.bg
+					end
+				else
+					separator_style.bg = style_c.bg
+				end
+
+				open = ui.Span(section_separator_open)
+				close = ui.Span(section_separator_close)
+			end
+
+			open:style(separator_style)
+			close:style(separator_style)
+
+			if side == Side.LEFT then
+				section_b_line_components[i] = ui.Line { component[1], close }
+			else
+				section_b_line_components[i] = ui.Line { open, component[1] }
+			end
+		else
+			if side == Side.LEFT then
+				section_b_line_components[i] = component[1]
+			else
+				section_b_line_components[i] = component[1]
+			end
+
+		end
 	end
 
-	return left_components, right_components
+	local section_c_line_components = {}
+	for i, component in ipairs(section_c_components) do
+		if component[2] == true then
+			separator_style = { bg = nil, fg = nil }
+
+			local open, close
+			if i ~= num_section_c_components then
+				separator_style.bg = style_c.bg
+				separator_style.fg = style_c.fg
+
+				open = ui.Span(part_separator_open)
+				close = ui.Span(part_separator_close)
+			else
+				separator_style.fg = style_c.bg
+
+				if show_background then
+					separator_style.bg = style_c.bg
+				end
+
+				open = ui.Span(section_separator_open)
+				close = ui.Span(section_separator_close)
+			end
+
+			open:style(separator_style)
+			close:style(separator_style)
+
+			if side == Side.LEFT then
+				section_c_line_components[i] = ui.Line { component[1], close }
+			else
+				section_c_line_components[i] = ui.Line { open, component[1] }
+			end
+		else
+			if side == Side.LEFT then
+				section_c_line_components[i] = component[1]
+			else
+				section_c_line_components[i] = component[1]
+			end
+		end
+	end
+
+	return section_a_line_components, section_b_line_components, section_c_line_components
 end
 
----Checks if either header-line or status-line contains components.
----@param line Config Configuration of either header-line or status-line.
----@return boolean show_line Returns yes if it contains components, otherwise returns no.
+--- Automatically creates and configures either left or right side according to their config.
+--- @param side Config Configuration of either left or right side.
+--- @return table section_a_components Components array whose components are in section-a of either side.
+--- @return table section_b_components Components array whose components are in section-b of either side.
+--- @return table section_c_components Components array whose components are in section-c of either side.
+local function config_side(side)
+	local section_a_components = {}
+	local section_b_components = {}
+	local section_c_components = {}
+
+	for _, section in ipairs(section_order) do
+		local components = side[section]
+
+		local in_section, section_components
+		if section == "section_a" then
+			in_section = ComponentType.A
+			section_components = section_a_components
+		elseif section == "section_b" then
+			in_section = ComponentType.B
+			section_components = section_b_components
+		else
+			in_section = ComponentType.C
+			section_components = section_c_components
+		end
+
+		for _, component in ipairs(components) do
+			if component.type == "string" then
+				if component.custom then
+					section_components[#section_components + 1] = { create_component_from_str(component.name, in_section), true }
+				else
+					local getter = get[component.name]
+
+					if getter then
+						local output
+						if component.params then
+							output = getter(get, table.unpack(component.params))
+						else
+							output = getter()
+						end
+
+						if output ~= nil and output ~= "" then
+							section_components[#section_components + 1] = { create_component_from_str(output, in_section), true }
+						end
+					end
+				end
+			elseif component.type == "coloreds" then
+				if component.custom then
+					section_components[#section_components + 1] = { create_component_from_coloreds(component.name, in_section), true }
+				else
+					local colorizer = colorize[component.name]
+
+					if colorizer then
+						local output
+						if component.params then
+							output = colorizer(colorize, table.unpack(component.params))
+						else
+							output = colorizer()
+						end
+
+						if output ~= nil and output ~= "" then
+							section_components[#section_components + 1] = { create_component_from_coloreds(output, in_section), true }
+						end
+					end
+				end
+			elseif component.type == "line" then
+				if component.custom then
+					section_components[#section_components + 1] = component.name
+				else
+					local creator = create[component.name]
+
+					if creator then
+						local output
+						if component.params then
+							output = creator(create, table.unpack(component.params))
+						else
+							output = creator()
+						end
+
+						if output then
+							section_components[#section_components + 1] = { output, false }
+						end
+					end
+				end
+			end
+		end
+	end
+
+	return section_a_components, section_b_components, section_c_components
+end
+
+--- Automatically creates and configures either header-line or status-line.
+--- @param side Config Configuration of either left or right side.
+--- @return table left_components Components array whose components are in left side of the line.
+--- @return table right_components Components array whose components are in right side of the line.
+local function config_line(side, in_side)
+	local section_a_components, section_b_components, section_c_components = config_side(side)
+
+	local section_a_line_components, section_b_line_components, section_c_line_components = config_separator(section_a_components, section_b_components, section_c_components, in_side)
+
+	if in_side == Side.RIGHT then
+		section_a_line_components = reverse_order(section_a_line_components)
+		section_b_line_components = reverse_order(section_b_line_components)
+		section_c_line_components = reverse_order(section_c_line_components)
+	end
+
+	local section_a_line = ui.Line(section_a_line_components)
+	local section_b_line = ui.Line(section_b_line_components)
+	local section_c_line = ui.Line(section_c_line_components)
+
+	if  in_side == Side.LEFT then
+		return ui.Line {section_a_line, section_b_line, section_c_line}
+	else
+		return ui.Line {section_c_line, section_b_line, section_a_line}
+	end
+end
+
+--- Checks if either header-line or status-line contains components.
+--- @param line Config Configuration of either header-line or status-line.
+--- @return boolean show_line Returns yes if it contains components, otherwise returns no.
 local function show_line(line)
 	local total_components = 0
 
@@ -688,10 +891,27 @@ local function show_line(line)
 	return total_components ~= 0
 end
 
+--- Creates and configures paragraph which is used as left or right of either
+--- header-line or status-line.
+--- @param area Rect The area where paragraph will be placed in.
+--- @param line? Line The line which used in paragraph. It is optional.
+--- @return Paragraph paragraph Configured parapgraph.
+local function config_paragraph(area, line)
+	local line_array = { line } or {}
+	if show_background then
+		return ui.Paragraph(area, line_array):style(style_c)
+	else
+		return ui.Paragraph(area, line_array)
+	end
+end
+
 return {
 	setup = function(_, config)
 		section_separator_open = config.section_separator.open
 		section_separator_close = config.section_separator.close
+
+		inverse_separator_open = config.inverse_separator.open
+		inverse_separator_close = config.inverse_separator.close
 
 		part_separator_open = config.part_separator.open
 		part_separator_close = config.part_separator.close
@@ -711,6 +931,7 @@ return {
 		permissions_s_fg = config.permissions_s_fg
 
 		tab_width = config.tab_width
+		tab_use_inverse = config.tab_use_inverse
 
 		selected_icon = config.selected.icon
 		copied_icon = config.copied.icon
@@ -732,11 +953,15 @@ return {
 		task_found_fg = config.found.fg
 		task_processed_fg = config.processed.fg
 
-		Progress.partial_render = function(self)
+		show_background = config.show_background
 
+		display_header_line = config.display_header_line
+		display_status_line = config.display_status_line
+
+		Progress.partial_render = function(self)
 			local progress = cx.tasks.progress
 			if progress.total == 0 then
-				return { ui.Paragraph(self.area, {}):style(style_c) }
+				return { config_paragraph(self.area) }
 			end
 
 			local gauge = ui.Gauge(self.area)
@@ -759,36 +984,54 @@ return {
 			}
 		end
 
-		if show_line(config.header_line) then
-			Header.render = function(self, area)
-				self.area = area
+		local header_number = 0
+		local status_number = 0
 
-				local left_components, right_components = config_line(config.header_line)
+		if display_header_line then
+			if show_line(config.header_line) then
+				Header.render = function(self, area)
+					self.area = area
 
-				local left_line = ui.Line(left_components)
-				local right_line = ui.Line(right_components)
+					local left_line = config_line(config.header_line.left, Side.LEFT)
+					local right_line = config_line(config.header_line.right, Side.RIGHT)
 
-				return {
-					ui.Paragraph(area, { left_line }):style(style_c),
-					ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
-				}
+					return {
+						config_paragraph(area, left_line),
+						ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT)
+					}
+				end
 			end
+		else
+			header_number = 1
+			function Header:render() return {} end
+
 		end
 
-		if show_line(config.status_line) then
-			Status.render = function(self, area)
-				self.area = area
+		if display_status_line then
+			if show_line(config.status_line) then
+				Status.render = function(self, area)
+					self.area = area
 
-				local left_components, right_components = config_line(config.status_line)
+					local left_line = config_line(config.status_line.left, Side.LEFT)
+					local right_line = config_line(config.status_line.right, Side.RIGHT)
 
-				local left_line = ui.Line(left_components)
-				local right_line = ui.Line(right_components)
+					return {
+						config_paragraph(area, left_line),
+						ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
+						table.unpack(Progress:render(area, right_line:width())),
+					}
+				end
+			end
+		else
+			status_number = 1
+			function Status:render() return {} end
 
-				return {
-					ui.Paragraph(area, { left_line }):style(style_c),
-					ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
-					table.unpack(Progress:render(area, right_line:width())),
-				}
+		end
+
+		if header_number + status_number ~= 0 then
+			local old_manager_render = Manager.render
+			function Manager:render(area)
+				return old_manager_render(self, ui.Rect { x = area.x, y = area.y - header_number, w = area.w, h = area.h + header_number + status_number })
 			end
 		end
 	end,
