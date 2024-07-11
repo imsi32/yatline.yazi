@@ -82,6 +82,9 @@ local task_processed_fg
 
 local show_background
 
+local display_header_line
+local display_status_line
+
 local section_order = { "section_a", "section_b", "section_c" }
 
 --=================--
@@ -952,6 +955,9 @@ return {
 
 		show_background = config.show_background
 
+		display_header_line = config.display_header_line
+		display_status_line = config.display_status_line
+
 		Progress.partial_render = function(self)
 			local progress = cx.tasks.progress
 			if progress.total == 0 then
@@ -978,32 +984,54 @@ return {
 			}
 		end
 
-		if show_line(config.header_line) then
-			Header.render = function(self, area)
-				self.area = area
+		local header_number = 0
+		local status_number = 0
 
-				local left_line = config_line(config.header_line.left, Side.LEFT)
-				local right_line = config_line(config.header_line.right, Side.RIGHT)
+		if display_header_line then
+			if show_line(config.header_line) then
+				Header.render = function(self, area)
+					self.area = area
 
-				return {
-					config_paragraph(area, left_line),
-					ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT)
-				}
+					local left_line = config_line(config.header_line.left, Side.LEFT)
+					local right_line = config_line(config.header_line.right, Side.RIGHT)
+
+					return {
+						config_paragraph(area, left_line),
+						ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT)
+					}
+				end
 			end
+		else
+			header_number = 1
+			function Header:render() return {} end
+
 		end
 
-		if show_line(config.status_line) then
-			Status.render = function(self, area)
-				self.area = area
+		if display_status_line then
+			if show_line(config.status_line) then
+				Status.render = function(self, area)
+					self.area = area
 
-				local left_line = config_line(config.status_line.left, Side.LEFT)
-				local right_line = config_line(config.status_line.right, Side.RIGHT)
+					local left_line = config_line(config.status_line.left, Side.LEFT)
+					local right_line = config_line(config.status_line.right, Side.RIGHT)
 
-				return {
-					config_paragraph(area, left_line),
-					ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
-					table.unpack(Progress:render(area, right_line:width())),
-				}
+					return {
+						config_paragraph(area, left_line),
+						ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
+						table.unpack(Progress:render(area, right_line:width())),
+					}
+				end
+			end
+		else
+			status_number = 1
+			function Status:render() return {} end
+
+		end
+
+		if header_number + status_number ~= 0 then
+			local old_manager_render = Manager.render
+			function Manager:render(area)
+				return old_manager_render(self, ui.Rect { x = area.x, y = area.y - header_number, w = area.w, h = area.h + header_number + status_number })
 			end
 		end
 	end,
