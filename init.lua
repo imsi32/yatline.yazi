@@ -904,6 +904,9 @@ end
 
 return {
 	setup = function(_, config)
+		tab_width = config.tab_width or 20
+		tab_use_inverse = config.tab_use_inverse or false
+
 		show_background = config.show_background or false
 
 		local display_header_line = config.display_header_line or true
@@ -962,9 +965,6 @@ return {
 		permissions_w_fg = config.permissions_w_fg or "red"
 		permissions_x_fg = config.permissions_x_fg or "cyan"
 		permissions_s_fg = config.permissions_s_fg or "white"
-
-		tab_width = config.tab_width or 20
-		tab_use_inverse = config.tab_use_inverse or false
 
 		if config.selected then
 			selected_fg = config.selected.fg
