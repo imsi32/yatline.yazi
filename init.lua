@@ -904,6 +904,18 @@ end
 
 return {
 	setup = function(_, config)
+		show_background = config.show_background or false
+
+		local display_header_line = config.display_header_line or true
+		local display_status_line = config.display_status_line or true
+
+		local header_line = config.header_line or { left = { section_a = {}, section_b = {}, section_c = {} }, right = { section_a = {}, section_b = {}, section_c = {} } }
+		local status_line = config.status_line or { left = { section_a = {}, section_b = {}, section_c = {} }, right = { section_a = {}, section_b = {}, section_c = {} } }
+
+		if config.theme then
+			config = config.theme
+		end
+
 		if config.section_separator then
 			section_separator_open = config.section_separator.open
 			section_separator_close = config.section_separator.close
@@ -1017,14 +1029,6 @@ return {
 			task_processed_icon = "󰐍"
 			task_processed_fg = "green"
 		end
-
-		show_background = config.show_background or false
-
-		local display_header_line = config.display_header_line or true
-		local display_status_line = config.display_status_line or true
-
-		local header_line = config.header_line or { left = { section_a = {}, section_b = {}, section_c = {} }, right = { section_a = {}, section_b = {}, section_c = {} } }
-		local status_line = config.status_line or { left = { section_a = {}, section_b = {}, section_c = {} }, right = { section_a = {}, section_b = {}, section_c = {} } }
 
 		Progress.partial_render = function(self)
 			local progress = cx.tasks.progress
