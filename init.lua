@@ -82,9 +82,6 @@ local task_processed_fg
 
 local show_background
 
-local display_header_line
-local display_status_line
-
 local section_order = { "section_a", "section_b", "section_c" }
 
 --=================--
@@ -907,56 +904,127 @@ end
 
 return {
 	setup = function(_, config)
-		section_separator_open = config.section_separator.open
-		section_separator_close = config.section_separator.close
+		if config.section_separator then
+			section_separator_open = config.section_separator.open
+			section_separator_close = config.section_separator.close
+		else
+			section_separator_open = ""
+			section_separator_close = ""
+		end
 
-		inverse_separator_open = config.inverse_separator.open
-		inverse_separator_close = config.inverse_separator.close
+		if config.inverse_separator then
+			inverse_separator_open = config.inverse_separator.open
+			inverse_separator_close = config.inverse_separator.close
+		else
+			inverse_separator_open = ""
+			inverse_separator_close = ""
+		end
 
-		part_separator_open = config.part_separator.open
-		part_separator_close = config.part_separator.close
+		if config.part_separator then
+			part_separator_open = config.part_separator.open
+			part_separator_close = config.part_separator.close
+		else
+			part_separator_open = ""
+			part_separator_close = ""
+		end
 
-		style_a = { bg = config.style_a.bg_mode.normal, fg = config.style_a.fg }
-		style_b = config.style_b
-		style_c = config.style_c
+		if config.style_a then
+			style_a = { bg = config.style_a.bg_mode.normal, fg = config.style_a.fg }
 
-		style_a_normal_bg = config.style_a.bg_mode.normal
-		style_a_select_bg = config.style_a.bg_mode.select
-		style_a_un_set_bg = config.style_a.bg_mode.un_set
+			style_a_normal_bg = config.style_a.bg_mode.normal
+			style_a_select_bg = config.style_a.bg_mode.select
+			style_a_un_set_bg = config.style_a.bg_mode.un_set
+		else
+			style_a = { bg = "white", fg = "black" }
 
-		permissions_t_fg = config.permissions_t_fg
-		permissions_r_fg = config.permissions_r_fg
-		permissions_w_fg = config.permissions_w_fg
-		permissions_x_fg = config.permissions_x_fg
-		permissions_s_fg = config.permissions_s_fg
+			style_a_normal_bg = "white"
+			style_a_select_bg = "brightyellow"
+			style_a_un_set_bg = "brightred"
+		end
 
-		tab_width = config.tab_width
-		tab_use_inverse = config.tab_use_inverse
+		style_b = config.style_b or { bg = "brightblack", fg =  "brightwhite" }
+		style_c = config.style_c or { bg = "black", fg =  "brightwhite" }
 
-		selected_icon = config.selected.icon
-		copied_icon = config.copied.icon
-		cut_icon = config.cut.icon
+		permissions_t_fg = config.permissions_t_fg or "green"
+		permissions_r_fg = config.permissions_r_fg or "yellow"
+		permissions_w_fg = config.permissions_w_fg or "red"
+		permissions_x_fg = config.permissions_x_fg or "aqua"
+		permissions_s_fg = config.permissions_s_fg or "white"
 
-		selected_fg = config.selected.fg
-		copied_fg = config.copied.fg
-		cut_fg = config.cut.fg
+		tab_width = config.tab_width or 20
+		tab_use_inverse = config.tab_use_inverse or false
 
-		task_total_icon = config.total.icon
-		task_succ_icon = config.succ.icon
-		task_fail_icon = config.fail.icon
-		task_found_icon = config.found.icon
-		task_processed_icon = config.processed.icon
+		if config.selected then
+			selected_fg = config.selected.fg
+			selected_icon = config.selected.icon
+		else
+			selected_fg = "yellow"
+			selected_icon = "󰻭"
+		end
 
-		task_total_fg = config.total.fg
-		task_succ_fg = config.succ.fg
-		task_fail_fg = config.fail.fg
-		task_found_fg = config.found.fg
-		task_processed_fg = config.processed.fg
+		if config.copied then
+			copied_fg = config.copied.fg
+			copied_icon = config.copied.icon
+		else
+			copied_fg = "green"
+			copied_icon = ""
+		end
 
-		show_background = config.show_background
+		if config.cut then
+			cut_icon = config.cut.icon
+			cut_fg = config.cut.fg
+		else
+			cut_icon = ""
+			cut_fg = "red"
+		end
 
-		display_header_line = config.display_header_line
-		display_status_line = config.display_status_line
+		if config.total then
+			task_total_icon = config.total.icon
+			task_total_fg = config.total.fg
+		else
+			task_total_icon = "󰮍"
+			task_total_fg = "yellow"
+		end
+
+		if config.succ then
+			task_succ_icon = config.succ.icon
+			task_succ_fg = config.succ.fg
+		else
+			task_succ_icon = ""
+			task_succ_fg = "green"
+		end
+
+		if config.fail then
+			task_fail_icon = config.fail.icon
+			task_fail_fg = config.fail.fg
+		else
+			task_fail_icon = ""
+			task_fail_fg = "red"
+		end
+
+		if config.found then
+			task_found_icon = config.found.icon
+			task_found_fg = config.found.fg
+		else
+			task_found_icon = "󰮕"
+			task_found_fg = "blue"
+		end
+
+		if config.processed then
+			task_processed_icon = config.processed.icon
+			task_processed_fg = config.processed.fg
+		else
+			task_processed_icon = "󰐍"
+			task_processed_fg = "green"
+		end
+
+		show_background = config.show_background or false
+
+		local display_header_line = config.display_header_line or true
+		local display_status_line = config.display_status_line or true
+
+		local header_line = config.header_line or { left = { section_a = {}, section_b = {}, section_c = {} }, right = { section_a = {}, section_b = {}, section_c = {} } }
+		local status_line = config.status_line or { left = { section_a = {}, section_b = {}, section_c = {} }, right = { section_a = {}, section_b = {}, section_c = {} } }
 
 		Progress.partial_render = function(self)
 			local progress = cx.tasks.progress
@@ -988,12 +1056,12 @@ return {
 		local status_number = 0
 
 		if display_header_line then
-			if show_line(config.header_line) then
+			if show_line(header_line) then
 				Header.render = function(self, area)
 					self.area = area
 
-					local left_line = config_line(config.header_line.left, Side.LEFT)
-					local right_line = config_line(config.header_line.right, Side.RIGHT)
+					local left_line = config_line(header_line.left, Side.LEFT)
+					local right_line = config_line(header_line.right, Side.RIGHT)
 
 					return {
 						config_paragraph(area, left_line),
@@ -1008,12 +1076,12 @@ return {
 		end
 
 		if display_status_line then
-			if show_line(config.status_line) then
+			if show_line(status_line) then
 				Status.render = function(self, area)
 					self.area = area
 
-					local left_line = config_line(config.status_line.left, Side.LEFT)
-					local right_line = config_line(config.status_line.right, Side.RIGHT)
+					local left_line = config_line(status_line.left, Side.LEFT)
+					local right_line = config_line(status_line.right, Side.RIGHT)
 
 					return {
 						config_paragraph(area, left_line),
