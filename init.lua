@@ -22,6 +22,8 @@
 -- Type Declaration --
 --==================--
 
+Yatline = {}
+
 local Side = { LEFT = 0, RIGHT = 1 }
 local SeparatorType = { OUTER = 0, INNER = 1 }
 local ComponentType = { A = 0, B = 1, C = 2 }
@@ -249,11 +251,11 @@ end
 -- Getter Functions --
 --==================--
 
-local get = {}
+Yatline.get = {}
 
 --- Gets the hovered file's name of the current active tab.
 --- @return string name Current active tab's hovered file's name.
-function get:hovered_name()
+function Yatline.get:hovered_name()
 	local hovered = cx.active.current.hovered
 	if hovered then
 		return hovered.name
@@ -264,7 +266,7 @@ end
 
 --- Gets the hovered file's path of the current active tab.
 --- @return string path Current active tab's hovered file's path.
-function get:hovered_path()
+function Yatline.get:hovered_path()
 	local hovered = cx.active.current.hovered
 	if hovered then
 		return tostring(hovered.url)
@@ -275,7 +277,7 @@ end
 
 --- Gets the hovered file's size of the current active tab.
 --- @return string size Current active tab's hovered file's size.
-function get:hovered_size()
+function Yatline.get:hovered_size()
 	local hovered = cx.active.current.hovered
 	if hovered then
 		return ya.readable_size(hovered:size() or hovered.cha.length)
@@ -286,7 +288,7 @@ end
 
 --- Gets the hovered file's path of the current active tab.
 --- @return string mime Current active tab's hovered file's path.
-function get:hovered_mime()
+function Yatline.get:hovered_mime()
 	local hovered = cx.active.current.hovered
 	if hovered then
 		return hovered:mime()
@@ -298,7 +300,7 @@ end
 --- Gets the hovered file's extension of the current active tab.
 --- @param show_icon boolean Whether or not an icon will be shown.
 --- @return string file_extension Current active tab's hovered file's extension.
-function get:hovered_file_extension(show_icon)
+function Yatline.get:hovered_file_extension(show_icon)
 	local hovered = cx.active.current.hovered
 
 	if hovered then
@@ -324,13 +326,13 @@ end
 
 --- Gets the path of the current active tab.
 --- @return string path Current active tab's path.
-function get:tab_path()
+function Yatline.get:tab_path()
 	return cx.active.current.cwd
 end
 
 --- Gets the mode of active tab.
 --- @return string mode Active tab's mode.
-function get:tab_mode()
+function Yatline.get:tab_mode()
 	local mode = tostring(cx.active.mode):upper()
 	if mode == "UNSET" then
 		mode = "UN-SET"
@@ -341,13 +343,13 @@ end
 
 --- Gets the number of files in the current active tab.
 --- @return string num_files Number of files in the current active tab.
-function get:tab_num_files()
+function Yatline.get:tab_num_files()
 	return tostring(#cx.active.current.files)
 end
 
 --- Gets the cursor position in the current active tab.
 --- @return string cursor_position Current active tab's cursor position.
-function get:cursor_position()
+function Yatline.get:cursor_position()
 	local cursor = cx.active.current.cursor
 	local length = #cx.active.current.files
 
@@ -360,7 +362,7 @@ end
 
 --- Gets the cursor position as percentage which is according to the number of files inside of current active tab.
 --- @return string percentage Percentage of current active tab's cursor position and number of percentages.
-function get:cursor_percentage()
+function Yatline.get:cursor_percentage()
 	local percentage = 0
 	local cursor = cx.active.current.cursor
 	local length = #cx.active.current.files
@@ -381,7 +383,7 @@ end
 --- @param format string Format for giving desired date or time values.
 --- @return string date Date or time values.
 --- @see os.date To see how format works.
-function get:date(format)
+function Yatline.get:date(format)
 	return tostring(os.date(format))
 end
 
@@ -389,7 +391,7 @@ end
 -- Component Functions --
 --=====================--
 
-local create = {}
+Yatline.create = {}
 
 --- Creates and returns line component for tabs.
 --- @param side Side Left or right side of the either header-line or status-line.
@@ -397,7 +399,7 @@ local create = {}
 --- @see set_mode_style To know how mode style selected.
 --- @see set_component_style To know how component style applied.
 --- @see connect_separator To know how component and separator connected.
-function create:tabs(side)
+function Yatline.create:tabs(side)
 	local tabs = #cx.tabs
 	local lines = {}
 
@@ -491,11 +493,11 @@ end
 -- Coloreds Functions --
 --====================--
 
-local colorize = {}
+Yatline.colorize = {}
 
 --- Gets the hovered file's permissions of the current active tab.
 --- @return Coloreds coloreds Current active tab's hovered file's permissions
-function colorize:permissions()
+function Yatline.colorize:permissions()
 	local hovered = cx.active.current.hovered
 
 	if hovered then
@@ -531,7 +533,7 @@ end
 
 --- Gets the number of selected and yanked files of the active tab.
 --- @return Coloreds coloreds Active tab's number of selected and yanked files.
-function colorize:count()
+function Yatline.colorize:count()
 	local num_yanked = #cx.yanked
 	local num_selected = #cx.active.selected
 
@@ -554,7 +556,7 @@ end
 
 --- Gets the number of task states.
 --- @return Coloreds coloreds Number of task states.
-function colorize:task_states()
+function Yatline.colorize:task_states()
 	local tasks = cx.tasks.progress
 
 	local coloreds = {
@@ -568,7 +570,7 @@ end
 
 --- Gets the number of task workloads.
 --- @return Coloreds coloreds Number of task workloads.
-function colorize:task_workload()
+function Yatline.colorize:task_workload()
 	local tasks = cx.tasks.progress
 
 	local coloreds = {
@@ -584,7 +586,7 @@ end
 --- @param fg Color Desired foreground color.
 --- @param params? table Array of parameters of string based component. It is optional.
 --- @return Coloreds coloreds Array of solely array of string based component's string and desired foreground color.
-function colorize:string_based_component(component_name, fg, params)
+function Yatline.colorize:string_based_component(component_name, fg, params)
 	local getter = get[component_name]
 
 	if getter then
@@ -787,7 +789,7 @@ local function config_side(side)
 				if component.custom then
 					section_components[#section_components + 1] = { create_component_from_str(component.name, in_section), true }
 				else
-					local getter = get[component.name]
+					local getter = Yatline.get[component.name]
 
 					if getter then
 						local output
@@ -806,7 +808,7 @@ local function config_side(side)
 				if component.custom then
 					section_components[#section_components + 1] = { create_component_from_coloreds(component.name, in_section), true }
 				else
-					local colorizer = colorize[component.name]
+					local colorizer = Yatline.colorize[component.name]
 
 					if colorizer then
 						local output
@@ -825,7 +827,7 @@ local function config_side(side)
 				if component.custom then
 					section_components[#section_components + 1] = component.name
 				else
-					local creator = create[component.name]
+					local creator = Yatline.create[component.name]
 
 					if creator then
 						local output
