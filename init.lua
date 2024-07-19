@@ -103,42 +103,6 @@ local function set_mode_style(mode)
 	end
 end
 
---- Sets the style of the separator according to the parameters.
---- While selecting component type of both previous and following components,
---- always think separator is in middle of two components
---- and previous component is in left side and following component is in right side.
---- Thus, side of component does not important when choosing these two components.
---- @param separator_type SeparatorType Where will there be a separator in the section.
---- @param component_type ComponentType Which section component will be in [ a | b | c ].
-local function set_separator_style(separator_type, component_type)
-	separator_style = { bg = nil, fg = nil }
-	if separator_type == SeparatorType.OUTER then
-		if component_type == ComponentType.A then
-			separator_style.bg = style_b.bg
-			separator_style.fg = style_a.bg
-		elseif component_type == ComponentType.B then
-			separator_style.bg = style_c.bg
-			separator_style.fg = style_b.bg
-		else
-			separator_style.fg = style_c.bg
-			if show_background then
-				separator_style.bg = style_c.bg
-			end
-		end
-	else
-		if component_type == ComponentType.A then
-			separator_style.bg = style_a.bg
-			separator_style.fg = style_a.fg
-		elseif component_type == ComponentType.B then
-			separator_style.bg = style_b.bg
-			separator_style.fg = style_b.fg
-		else
-			separator_style.bg = style_c.bg
-			separator_style.fg = style_c.fg
-		end
-	end
-end
-
 --- Sets the style of the component according to the its type.
 --- @param component Span Component that will be styled.
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
@@ -626,149 +590,86 @@ end
 -- Configuration --
 --===============--
 
---- Connects given components with configured separator
+--- Configure separators if it is need to be added to the components.
+--- Connects them with each component.
+--- @param section_components table Array of components in one of the sections.
+--- @param component_type ComponentType Which section component will be in [ a | b | c ].
+--- @param in_side Side Left or right side of the either header-line or status-line.
+--- @param num_section_b_components integer Number of components in section-b.
+--- @param num_section_c_components integer Number of components in section-c.
+--- @return table section_line_components Array of line components whether or not connected with separators.
+--- @see connect_separator To know how component and separator connected.
+local function config_components_separators(section_components, component_type, in_side, num_section_b_components, num_section_c_components)
+	local num_section_components = #section_components
+	local section_line_components = {}
+	for i, component in ipairs(section_components) do
+		if component[2] == true then
+			separator_style = { bg = nil, fg = nil }
+
+			local separator_type
+			if i ~= num_section_components then
+				if component_type == ComponentType.A then
+					separator_style = style_a
+				elseif component_type == ComponentType.B then
+					separator_style = style_b
+				else
+					separator_style = style_c
+				end
+
+				separator_type = SeparatorType.INNER
+			else
+				if component_type == ComponentType.A then
+					separator_style.fg = style_a.bg
+				elseif component_type == ComponentType.B then
+					separator_style.fg = style_b.bg
+				else
+					separator_style.fg = style_c.bg
+				end
+
+				if component_type == ComponentType.A and num_section_b_components ~= 0 then
+					separator_style.bg = style_b.bg
+				else
+					if num_section_c_components == 0 or component_type == ComponentType.C then
+						if show_background then
+							separator_style.bg = style_c.bg
+						end
+					else
+							separator_style.bg = style_c.bg
+					end
+				end
+
+				separator_type = SeparatorType.OUTER
+			end
+
+			section_line_components[i] = connect_separator(component[1], in_side, separator_type)
+		else
+			if in_side == Side.LEFT then
+				section_line_components[i] = component[1]
+			else
+				section_line_components[i] = component[1]
+			end
+		end
+	end
+
+	return section_line_components
+end
+
+--- Leads the given parameters to the other functions.
 --- @param section_a_components table Components array whose components are in section-a of either side.
 --- @param section_b_components table Components array whose components are in section-b of either side.
 --- @param section_c_components table Components array whose components are in section-c of either side.
---- @param side Side Left or right side of the either header-line or status-line.
+--- @param in_side Side Left or right side of the either header-line or status-line.
 --- @return table section_a_line_components Array of components whose components are connected to separator and are in section-a of either side.
 --- @return table section_b_line_components Array of components whose components are connected to separator and are in section-b of either side.
 --- @return table section_c_line_components Array of components whose components are connected to separator and are in section-c of either side.
-local function config_separator(section_a_components, section_b_components, section_c_components, side)
-	local num_section_a_components = #section_a_components
+--- @see config_components_separators To know how separators are configured.
+local function config_components(section_a_components, section_b_components, section_c_components, in_side)
 	local num_section_b_components = #section_b_components
 	local num_section_c_components = #section_c_components
 
-	local section_a_line_components = {}
-	for i, component in ipairs(section_a_components) do
-		if component[2] == true then
-			separator_style = { bg = nil, fg = nil }
-
-			local open, close
-			if i ~= num_section_a_components then
-				separator_style.bg = style_a.bg
-				separator_style.fg = style_a.fg
-
-				open = ui.Span(part_separator_open)
-				close = ui.Span(part_separator_close)
-			else
-				separator_style.fg = style_a.bg
-
-				if num_section_b_components == 0 and num_section_c_components == 0 then
-					if show_background then
-						separator_style.bg = style_c.bg
-					end
-				elseif num_section_b_components == 0 then
-					separator_style.bg = style_c.bg
-				else
-					separator_style.bg = style_b.bg
-				end
-
-				open = ui.Span(section_separator_open)
-				close = ui.Span(section_separator_close)
-			end
-
-			open:style(separator_style)
-			close:style(separator_style)
-
-			if side == Side.LEFT then
-				section_a_line_components[i] = ui.Line { component[1], close }
-			else
-				section_a_line_components[i] = ui.Line { open, component[1] }
-			end
-		else
-			if side == Side.LEFT then
-				section_a_line_components[i] = component[1]
-			else
-				section_a_line_components[i] = component[1]
-			end
-		end
-	end
-
-	local section_b_line_components = {}
-	for i, component in ipairs(section_b_components) do
-		if component[2] == true then
-			separator_style = { bg = nil, fg = nil }
-
-			local open, close
-			if i ~= num_section_b_components then
-				separator_style.bg = style_b.bg
-				separator_style.fg = style_b.fg
-
-				open = ui.Span(part_separator_open)
-				close = ui.Span(part_separator_close)
-			else
-				separator_style.fg = style_b.bg
-
-				if num_section_c_components == 0 then
-					if show_background then
-						separator_style.bg = style_c.bg
-					end
-				else
-					separator_style.bg = style_c.bg
-				end
-
-				open = ui.Span(section_separator_open)
-				close = ui.Span(section_separator_close)
-			end
-
-			open:style(separator_style)
-			close:style(separator_style)
-
-			if side == Side.LEFT then
-				section_b_line_components[i] = ui.Line { component[1], close }
-			else
-				section_b_line_components[i] = ui.Line { open, component[1] }
-			end
-		else
-			if side == Side.LEFT then
-				section_b_line_components[i] = component[1]
-			else
-				section_b_line_components[i] = component[1]
-			end
-
-		end
-	end
-
-	local section_c_line_components = {}
-	for i, component in ipairs(section_c_components) do
-		if component[2] == true then
-			separator_style = { bg = nil, fg = nil }
-
-			local open, close
-			if i ~= num_section_c_components then
-				separator_style.bg = style_c.bg
-				separator_style.fg = style_c.fg
-
-				open = ui.Span(part_separator_open)
-				close = ui.Span(part_separator_close)
-			else
-				separator_style.fg = style_c.bg
-
-				if show_background then
-					separator_style.bg = style_c.bg
-				end
-
-				open = ui.Span(section_separator_open)
-				close = ui.Span(section_separator_close)
-			end
-
-			open:style(separator_style)
-			close:style(separator_style)
-
-			if side == Side.LEFT then
-				section_c_line_components[i] = ui.Line { component[1], close }
-			else
-				section_c_line_components[i] = ui.Line { open, component[1] }
-			end
-		else
-			if side == Side.LEFT then
-				section_c_line_components[i] = component[1]
-			else
-				section_c_line_components[i] = component[1]
-			end
-		end
-	end
+	local section_a_line_components = config_components_separators(section_a_components, ComponentType.A, in_side, num_section_b_components, num_section_c_components)
+	local section_b_line_components = config_components_separators(section_b_components, ComponentType.B, in_side, num_section_b_components, num_section_c_components)
+	local section_c_line_components = config_components_separators(section_c_components, ComponentType.C, in_side, num_section_b_components, num_section_c_components)
 
 	return section_a_line_components, section_b_line_components, section_c_line_components
 end
@@ -831,10 +732,12 @@ end
 --- @param side Config Configuration of either left or right side.
 --- @return table left_components Components array whose components are in left side of the line.
 --- @return table right_components Components array whose components are in right side of the line.
+--- @see config_side To know how components are gotten from side's config.
+--- @see config_components To know how components are configured.
 local function config_line(side, in_side)
 	local section_a_components, section_b_components, section_c_components = config_side(side)
 
-	local section_a_line_components, section_b_line_components, section_c_line_components = config_separator(section_a_components, section_b_components, section_c_components, in_side)
+	local section_a_line_components, section_b_line_components, section_c_line_components = config_components(section_a_components, section_b_components, section_c_components, in_side)
 
 	if in_side == Side.RIGHT then
 		section_a_line_components = reverse_order(section_a_line_components)
