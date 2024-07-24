@@ -787,6 +787,8 @@ end
 
 return {
 	setup = function(_, config)
+		config = config or {}
+
 		tab_width = config.tab_width or 20
 		tab_use_inverse = config.tab_use_inverse or false
 
