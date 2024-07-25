@@ -794,8 +794,15 @@ return {
 
 		show_background = config.show_background or false
 
-		local display_header_line = config.display_header_line or true
-		local display_status_line = config.display_status_line or true
+		local display_header_line = config.display_header_line
+		if display_header_line == nil then
+			display_header_line = true
+		end
+
+		local display_status_line = config.display_status_line
+		if display_status_line == nil then
+			display_status_line = true
+		end
 
 		local header_line = config.header_line or { left = { section_a = {}, section_b = {}, section_c = {} }, right = { section_a = {}, section_b = {}, section_c = {} } }
 		local status_line = config.status_line or { left = { section_a = {}, section_b = {}, section_c = {} }, right = { section_a = {}, section_b = {}, section_c = {} } }
@@ -918,7 +925,7 @@ return {
 		Progress.partial_render = function(self)
 			local progress = cx.tasks.progress
 			if progress.total == 0 then
-				return { config_paragraph(self.area) }
+				return { config_paragraph(self._area) }
 			end
 
 			local gauge = ui.Gauge(self.area)
@@ -941,54 +948,74 @@ return {
 			}
 		end
 
-		local header_number = 0
-		local status_number = 0
-
 		if display_header_line then
 			if show_line(header_line) then
-				Header.render = function(self, area)
-					self.area = area
-
+				Header.render = function(self)
 					local left_line = config_line(header_line.left, Side.LEFT)
 					local right_line = config_line(header_line.right, Side.RIGHT)
 
 					return {
-						config_paragraph(area, left_line),
-						ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT)
+						config_paragraph(self._area, left_line),
+						ui.Paragraph(self._area, { right_line }):align(ui.Paragraph.RIGHT)
 					}
 				end
 			end
 		else
-			header_number = 1
-			function Header:render() return {} end
+			Header.render = function() return {} end
 
 		end
 
 		if display_status_line then
 			if show_line(status_line) then
-				Status.render = function(self, area)
-					self.area = area
-
+				Status.render = function(self)
 					local left_line = config_line(status_line.left, Side.LEFT)
 					local right_line = config_line(status_line.right, Side.RIGHT)
 
 					return {
-						config_paragraph(area, left_line),
-						ui.Paragraph(area, { right_line }):align(ui.Paragraph.RIGHT),
-						table.unpack(Progress:render(area, right_line:width())),
+						config_paragraph(self._area, left_line),
+						ui.Paragraph(self._area, { right_line }):align(ui.Paragraph.RIGHT),
+						table.unpack(Progress:render(self._area, right_line:width())),
 					}
 				end
 			end
 		else
-			status_number = 1
-			function Status:render() return {} end
+			Status.render = function() return {} end
 		end
 
-		if header_number + status_number ~= 0 then
-			local old_manager_render = Manager.render
-			function Manager:render(area)
-				return old_manager_render(self, ui.Rect { x = area.x, y = area.y - header_number, w = area.w, h = area.h + header_number + status_number })
+		Root.layout = function(self)
+			local constraints = {}
+			if display_header_line then
+				table.insert(constraints, ui.Constraint.Length(1))
 			end
+
+			table.insert(constraints, ui.Constraint.Fill(1))
+
+			if display_status_line then
+				table.insert(constraints, ui.Constraint.Length(1))
+			end
+
+			self._chunks = ui.Layout()
+			:direction(ui.Layout.VERTICAL)
+			:constraints(constraints)
+			:split(self._area)
+		end
+
+		Root.build = function(self)
+			local childrens = {}
+			local i = 1
+			if display_header_line then
+				table.insert(childrens, Header:new(self._chunks[i], cx.active))
+				i = i + 1
+			end
+
+			table.insert(childrens, Tab:new(self._chunks[i], cx.active))
+			i = i + 1
+
+			if display_status_line then
+				table.insert(childrens, Status:new(self._chunks[i], cx.active))
+			end
+
+			self._children = childrens
 		end
 	end,
 }
