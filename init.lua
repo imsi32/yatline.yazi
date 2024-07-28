@@ -28,8 +28,6 @@ local Side = { LEFT = 0, RIGHT = 1 }
 local SeparatorType = { OUTER = 0, INNER = 1 }
 local ComponentType = { A = 0, B = 1, C = 2 }
 
-os.setlocale("")
-
 --=========================--
 -- Variable Initialization --
 --=========================--
@@ -184,9 +182,7 @@ Yatline.string.has_separator = true
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
 --- @return Line line Customized Line which follows desired style of the parameters.
 --- @see set_mode_style To know how mode style selected.
---- @see set_separator_style To know how separator style applied.
 --- @see set_component_style To know how component style applied.
---- @see connect_separator To know how component and separator connected.
 function Yatline.string.create(string, component_type)
 	local span = ui.Span(" " .. string .. " ")
 	set_mode_style(cx.active.mode)
@@ -455,9 +451,7 @@ Yatline.coloreds.has_separator = true
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
 --- @return Line line Customized Line which follows desired style of the parameters.
 --- @see set_mode_style To know how mode style selected.
---- @see set_separator_style To know how separator style applied.
 --- @see set_component_style To know how component style applied.
---- @see connect_separator To know how component and separator connected.
 function Yatline.coloreds.create(coloreds, component_type)
 	set_mode_style(cx.active.mode)
 
@@ -962,7 +956,6 @@ return {
 			end
 		else
 			Header.render = function() return {} end
-
 		end
 
 		if display_status_line then
