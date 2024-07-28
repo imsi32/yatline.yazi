@@ -207,7 +207,7 @@ end
 function Yatline.string.get:hovered_path()
 	local hovered = cx.active.current.hovered
 	if hovered then
-		return tostring(hovered.url)
+		return ya.readable_path(tostring(hovered.url))
 	else
 		return ""
 	end
@@ -265,7 +265,7 @@ end
 --- Gets the path of the current active tab.
 --- @return string path Current active tab's path.
 function Yatline.string.get:tab_path()
-	return cx.active.current.cwd
+	return ya.readable_path(tostring(cx.active.current.cwd))
 end
 
 --- Gets the mode of active tab.
