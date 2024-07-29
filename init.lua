@@ -953,6 +953,9 @@ return {
 						ui.Paragraph(self._area, { right_line }):align(ui.Paragraph.RIGHT)
 					}
 				end
+
+				Header.children_add = function() return {} end
+				Header.children_remove = function() return {} end
 			end
 		else
 			Header.render = function() return {} end
@@ -970,6 +973,9 @@ return {
 						table.unpack(Progress:render(self._area, right_line:width())),
 					}
 				end
+
+				Status.children_add = function() return {} end
+				Status.children_remove = function() return {} end
 			end
 		else
 			Status.render = function() return {} end
