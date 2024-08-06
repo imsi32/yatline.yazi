@@ -265,7 +265,21 @@ end
 --- Gets the path of the current active tab.
 --- @return string path Current active tab's path.
 function Yatline.string.get:tab_path()
-	return ya.readable_path(tostring(cx.active.current.cwd))
+	local cwd = cx.active.current.cwd
+	local filter = cx.active.current.files.filter
+
+	local search = cwd.is_search and string.format(" (search: %s", cwd:frag()) or ""
+
+	local suffix
+	if not filter then
+		suffix = search == "" and search or search .. ")"
+	elseif search == "" then
+		suffix = string.format(" (filter: %s)", tostring(filter))
+	else
+		suffix = string.format("%s, filter: %s)", search, tostring(filter))
+	end
+
+	return ya.readable_path(tostring(cx.active.current.cwd)) .. suffix
 end
 
 --- Gets the mode of active tab.
