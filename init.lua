@@ -922,7 +922,7 @@ return {
 				return { config_paragraph(self._area) }
 			end
 
-			local gauge = ui.Gauge(self.area)
+			local gauge = ui.Gauge(self._area)
 			if progress.fail == 0 then
 				gauge = gauge:gauge_style(THEME.status.progress_normal)
 			else
