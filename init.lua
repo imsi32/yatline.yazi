@@ -58,7 +58,6 @@ local permissions_x_fg
 local permissions_s_fg
 
 local tab_width
-local tab_use_inverse
 
 local selected_icon
 local copied_icon
@@ -122,9 +121,20 @@ end
 --- @return Line line A Line which has component and separator.
 local function connect_separator(component, side, separator_type)
 	local open, close
-	if separator_type == SeparatorType.OUTER then
+	if separator_type == SeparatorType.OUTER and not (separator_style.bg == "reset" and separator_style.fg == "reset") then
 		open = ui.Span(section_separator_open)
 		close = ui.Span(section_separator_close)
+
+		if separator_style.fg == "reset" then
+			if separator_style.bg ~= "reset" and separator_style.bg ~= nil then
+				open = ui.Span(inverse_separator_open)
+				close = ui.Span(inverse_separator_close)
+
+				separator_style.fg, separator_style.bg = separator_style.bg, separator_style.fg
+			else
+				return ui.Line { component }
+			end
+		end
 	else
 		open = ui.Span(part_separator_open)
 		close = ui.Span(part_separator_close)
@@ -384,12 +394,18 @@ function Yatline.line.get:tabs(side)
 			set_mode_style(cx.tabs[i].mode)
 			set_component_style(span, ComponentType.A)
 
-			separator_style.fg = style_a.bg
-			if show_background then
-				separator_style.bg = style_c.bg
-			end
+			if style_a.bg ~= "reset" or show_background then
+				separator_style.fg = style_a.bg
+				if show_background then
+					separator_style.bg = style_c.bg
+				end
 
-			lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.OUTER)
+				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.OUTER)
+			else
+				separator_style.fg = style_a.fg
+
+				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.INNER)
+			end
 		else
 			local span = ui.Span(" " .. text .. " ")
 			if show_background then
@@ -402,22 +418,29 @@ function Yatline.line.get:tabs(side)
 				set_mode_style(cx.tabs[i + 1].mode)
 
 				local open, close
-				if tab_use_inverse then
-					separator_style.fg = style_a.bg
-					if show_background then
-						separator_style.bg = style_c.bg
-					end
+				if style_a.bg ~= "reset" or ( show_background and style_c.bg ~= "reset" ) then
+					if not show_background or ( show_background and style_c.bg == "reset" ) then
+						separator_style.fg = style_a.bg
+						if show_background then
+							separator_style.bg = style_c.bg
+						end
 
-					open = ui.Span(inverse_separator_open)
-					close = ui.Span(inverse_separator_close)
+						open = ui.Span(inverse_separator_open)
+						close = ui.Span(inverse_separator_close)
+					else
+						separator_style.bg = style_a.bg
+						if show_background then
+							separator_style.fg = style_c.bg
+						end
+
+						open = ui.Span(section_separator_open)
+						close = ui.Span(section_separator_close)
+					end
 				else
-					separator_style.bg = style_a.bg
-					if show_background then
-						separator_style.fg = style_c.bg
-					end
+					separator_style.fg = style_c.fg
 
-					open = ui.Span(section_separator_open)
-					close = ui.Span(section_separator_close)
+					open = ui.Span(part_separator_open)
+					close = ui.Span(part_separator_close)
 				end
 
 				open:style(separator_style)
@@ -798,7 +821,6 @@ return {
 		config = config or {}
 
 		tab_width = config.tab_width or 20
-		tab_use_inverse = config.tab_use_inverse or false
 
 		show_background = config.show_background or false
 
