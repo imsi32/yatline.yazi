@@ -82,6 +82,7 @@ local task_processed_fg
 local show_background
 
 local section_order = { "section_a", "section_b", "section_c" }
+local component_positions
 
 --=================--
 -- Component Setup --
@@ -822,6 +823,8 @@ return {
 
 		tab_width = config.tab_width or 20
 
+		component_positions = config.component_positions or { "header", "tab", "status" }
+
 		show_background = config.show_background or false
 
 		local display_header_line = config.display_header_line
@@ -1019,37 +1022,27 @@ return {
 
 		Root.layout = function(self)
 			local constraints = {}
-			if display_header_line then
-				table.insert(constraints, ui.Constraint.Length(1))
+			for _, component in ipairs(component_positions) do
+				if component == "header" or component == "status" then
+					table.insert(constraints, ui.Constraint.Length(1))
+				elseif component == "tab" then
+					table.insert(constraints, ui.Constraint.Fill(1))
+				end
 			end
-
-			table.insert(constraints, ui.Constraint.Fill(1))
-
-			if display_status_line then
-				table.insert(constraints, ui.Constraint.Length(1))
-			end
-
-			self._chunks = ui.Layout()
-			:direction(ui.Layout.VERTICAL)
-			:constraints(constraints)
-			:split(self._area)
+			self._chunks = ui.Layout():direction(ui.Layout.VERTICAL):constraints(constraints):split(self._area)
 		end
 
 		Root.build = function(self)
 			local childrens = {}
-			local i = 1
-			if display_header_line then
-				table.insert(childrens, Header:new(self._chunks[i], cx.active))
-				i = i + 1
+			for i, component in ipairs(component_positions) do
+				if component == "header" then
+					table.insert(childrens, Header:new(self._chunks[i], cx.active))
+				elseif component == "tab" then
+					table.insert(childrens, Tab:new(self._chunks[i], cx.active))
+				elseif component == "status" then
+					table.insert(childrens, Status:new(self._chunks[i], cx.active))
+				end
 			end
-
-			table.insert(childrens, Tab:new(self._chunks[i], cx.active))
-			i = i + 1
-
-			if display_status_line then
-				table.insert(childrens, Status:new(self._chunks[i], cx.active))
-			end
-
 			self._children = childrens
 		end
 	end,
