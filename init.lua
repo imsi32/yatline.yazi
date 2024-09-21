@@ -822,6 +822,8 @@ return {
 
 		tab_width = config.tab_width or 20
 
+		local component_positions = config.component_positions or { "header", "tab", "status" }
+
 		show_background = config.show_background or false
 
 		local display_header_line = config.display_header_line
@@ -1019,35 +1021,32 @@ return {
 
 		Root.layout = function(self)
 			local constraints = {}
-			if display_header_line then
-				table.insert(constraints, ui.Constraint.Length(1))
+			for _, component in ipairs(component_positions) do
+				if (component == "header" and display_header_line) or (component == "status" and display_status_line) then
+					table.insert(constraints, ui.Constraint.Length(1))
+				elseif component == "tab" then
+					table.insert(constraints, ui.Constraint.Fill(1))
+				end
 			end
 
-			table.insert(constraints, ui.Constraint.Fill(1))
-
-			if display_status_line then
-				table.insert(constraints, ui.Constraint.Length(1))
-			end
-
-			self._chunks = ui.Layout()
-			:direction(ui.Layout.VERTICAL)
-			:constraints(constraints)
-			:split(self._area)
+			self._chunks = ui.Layout():direction(ui.Layout.VERTICAL):constraints(constraints):split(self._area)
 		end
 
 		Root.build = function(self)
 			local childrens = {}
+
 			local i = 1
-			if display_header_line then
-				table.insert(childrens, Header:new(self._chunks[i], cx.active))
-				i = i + 1
-			end
-
-			table.insert(childrens, Tab:new(self._chunks[i], cx.active))
-			i = i + 1
-
-			if display_status_line then
-				table.insert(childrens, Status:new(self._chunks[i], cx.active))
+			for _, component in ipairs(component_positions) do
+				if component == "header" and display_header_line then
+					table.insert(childrens, Header:new(self._chunks[i], cx.active))
+					i = i + 1
+				elseif component == "tab" then
+					table.insert(childrens, Tab:new(self._chunks[i], cx.active))
+					i = i + 1
+				elseif component == "status" and display_status_line then
+					table.insert(childrens, Status:new(self._chunks[i], cx.active))
+					i = i + 1
+				end
 			end
 
 			self._children = childrens
