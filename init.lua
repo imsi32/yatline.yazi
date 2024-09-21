@@ -82,7 +82,6 @@ local task_processed_fg
 local show_background
 
 local section_order = { "section_a", "section_b", "section_c" }
-local component_positions
 
 --=================--
 -- Component Setup --
@@ -823,7 +822,7 @@ return {
 
 		tab_width = config.tab_width or 20
 
-		component_positions = config.component_positions or { "header", "tab", "status" }
+		local component_positions = config.component_positions or { "header", "tab", "status" }
 
 		show_background = config.show_background or false
 
@@ -1023,26 +1022,33 @@ return {
 		Root.layout = function(self)
 			local constraints = {}
 			for _, component in ipairs(component_positions) do
-				if component == "header" or component == "status" then
+				if (component == "header" and display_header_line) or (component == "status" and display_status_line) then
 					table.insert(constraints, ui.Constraint.Length(1))
 				elseif component == "tab" then
 					table.insert(constraints, ui.Constraint.Fill(1))
 				end
 			end
+
 			self._chunks = ui.Layout():direction(ui.Layout.VERTICAL):constraints(constraints):split(self._area)
 		end
 
 		Root.build = function(self)
 			local childrens = {}
-			for i, component in ipairs(component_positions) do
-				if component == "header" then
+
+			local i = 1
+			for _, component in ipairs(component_positions) do
+				if component == "header" and display_header_line then
 					table.insert(childrens, Header:new(self._chunks[i], cx.active))
+					i = i + 1
 				elseif component == "tab" then
 					table.insert(childrens, Tab:new(self._chunks[i], cx.active))
-				elseif component == "status" then
+					i = i + 1
+				elseif component == "status" and display_status_line then
 					table.insert(childrens, Status:new(self._chunks[i], cx.active))
+					i = i + 1
 				end
 			end
+
 			self._children = childrens
 		end
 	end,
