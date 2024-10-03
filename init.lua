@@ -512,29 +512,33 @@ function Yatline.coloreds.get:permissions()
 	if hovered then
 		local perm = hovered.cha:permissions()
 
-		local coloreds = {}
-		coloreds[1] = { " ", "black" }
+		if perm then
+			local coloreds = {}
+			coloreds[1] = { " ", "black" }
 
-		for i = 1, #perm do
-			local c = perm:sub(i, i)
+			for i = 1, #perm do
+				local c = perm:sub(i, i)
 
-			local fg = permissions_t_fg
-			if c == "-" then
-				fg = permissions_s_fg
-			elseif c == "r" then
-				fg = permissions_r_fg
-			elseif c == "w" then
-				fg = permissions_w_fg
-			elseif c == "x" or c == "s" or c == "S" or c == "t" or c == "T" then
-				fg = permissions_x_fg
+				local fg = permissions_t_fg
+				if c == "-" then
+					fg = permissions_s_fg
+				elseif c == "r" then
+					fg = permissions_r_fg
+				elseif c == "w" then
+					fg = permissions_w_fg
+				elseif c == "x" or c == "s" or c == "S" or c == "t" or c == "T" then
+					fg = permissions_x_fg
+				end
+
+				coloreds[i + 1] = { c, fg }
 			end
 
-			coloreds[i + 1] = { c, fg }
+			coloreds[#perm + 2] = { " ", "black" }
+
+			return coloreds
+		else
+			return ""
 		end
-
-		coloreds[#perm + 2] = { " ", "black" }
-
-		return coloreds
 	else
 		return ""
 	end
