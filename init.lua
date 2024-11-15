@@ -245,6 +245,18 @@ function Yatline.string.get:hovered_mime()
 	end
 end
 
+--- Gets the hovered file's user and group ownership of the current active tab.
+--- @return string ownership active tab's hovered file's path.
+function Yatline.string.get:hovered_ownership()
+	local hovered = cx.active.current.hovered
+
+	if hovered then
+		return ya.user_name(hovered.cha.uid) .. ":" .. ya.group_name(hovered.cha.gid)
+	else
+		return ""
+	end
+end
+
 --- Gets the hovered file's extension of the current active tab.
 --- @param show_icon boolean Whether or not an icon will be shown.
 --- @return string file_extension Current active tab's hovered file's extension.
