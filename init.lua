@@ -235,7 +235,7 @@ function Yatline.string.get:hovered_size()
 end
 
 --- Gets the hovered file's path of the current active tab.
---- @return string mime Current active tab's hovered file's path.
+--- @return string mime Current active tab's hovered file's mime.
 function Yatline.string.get:hovered_mime()
 	local hovered = cx.active.current.hovered
 	if hovered then
@@ -246,7 +246,7 @@ function Yatline.string.get:hovered_mime()
 end
 
 --- Gets the hovered file's user and group ownership of the current active tab.
---- @return string ownership active tab's hovered file's path.
+--- @return string ownership Current active tab's hovered file's user and group ownership.
 function Yatline.string.get:hovered_ownership()
 	local hovered = cx.active.current.hovered
 
