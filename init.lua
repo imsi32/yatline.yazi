@@ -121,7 +121,9 @@ end
 --- @return Line line A Line which has component and separator.
 local function connect_separator(component, side, separator_type)
 	local open, close
-	if separator_type == SeparatorType.OUTER and not (separator_style.bg == "reset" and separator_style.fg == "reset") then
+	if
+		separator_type == SeparatorType.OUTER and not (separator_style.bg == "reset" and separator_style.fg == "reset")
+	then
 		open = ui.Span(section_separator_open)
 		close = ui.Span(section_separator_close)
 
@@ -132,7 +134,7 @@ local function connect_separator(component, side, separator_type)
 
 				separator_style.fg, separator_style.bg = separator_style.bg, separator_style.fg
 			else
-				return ui.Line { component }
+				return ui.Line({ component })
 			end
 		end
 	else
@@ -144,9 +146,9 @@ local function connect_separator(component, side, separator_type)
 	close:style(separator_style)
 
 	if side == Side.LEFT then
-		return ui.Line { component, close }
+		return ui.Line({ component, close })
 	else
-		return ui.Line { open, component }
+		return ui.Line({ open, component })
 	end
 end
 
@@ -179,6 +181,21 @@ local function reverse_order(array)
 	return reversed
 end
 
+--- Trims the filename if it is longer than the max_length.
+--- @param filename string The name of a file which will be trimmed.
+--- @param max_length integer Maximum length of the filename.
+--- @param trim_length integer Length of the trimmed filename.
+--- @return string trimmed_filename Trimmed filename.
+local function trim_filename(filename, max_length, trim_length)
+	if not max_length or not trim_length then
+		return filename
+	end
+
+	return #filename > max_length
+			and (string.sub(filename, 1, trim_length) .. "..." .. string.sub(filename, -trim_length))
+		or filename
+end
+
 --========================--
 -- Component String Group --
 --========================--
@@ -198,17 +215,41 @@ function Yatline.string.create(string, component_type)
 	set_mode_style(cx.active.mode)
 	set_component_style(span, component_type)
 
-	return ui.Line{span}
+	return ui.Line({ span })
 end
 
+--- Configuration for getting hovered file's name
+--- @class HoveredNameConfig
+--- @field trimed? boolean Whether to trim the filename if it's too long (default: false)
+--- @field max_length? integer Maximum length of the filename (default: 24)
+--- @field trim_length? integer Length of each end when trimming (default: 6)
+--- @field show_symlink? boolean Whether to show symlink target (default: false)
 --- Gets the hovered file's name of the current active tab.
---- @return string name Current active tab's hovered file's name.
-function Yatline.string.get:hovered_name()
+--- @param config? HoveredNameConfig Configuration for getting hovered file's name
+--- @return string name Current active tab's hovered file's name
+function Yatline.string.get:hovered_name(config)
 	local hovered = cx.active.current.hovered
-	if hovered then
-		return hovered.name
-	else
+	if not hovered then
 		return ""
+	end
+
+	if not config then
+		return hovered.name
+	end
+
+	local trimed = config.trimed or false
+	local max_length = config.max_length or 24
+	local trim_length = config.trim_length or 6
+	local show_symlink = config.show_symlink or false
+
+	local linked = (show_symlink and hovered.link_to ~= nil) and (" -> " .. tostring(hovered.link_to)) or ""
+
+	if trimed then
+		local trimmed_name = trim_filename(hovered.name, max_length, trim_length)
+		local trimmed_linked = trim_filename(linked, max_length, trim_length)
+		return trimmed_name .. trimmed_linked
+	else
+		return hovered.name .. linked
 	end
 end
 
@@ -430,8 +471,8 @@ function Yatline.line.get:tabs(side)
 				set_mode_style(cx.tabs[i + 1].mode)
 
 				local open, close
-				if style_a.bg ~= "reset" or ( show_background and style_c.bg ~= "reset" ) then
-					if not show_background or ( show_background and style_c.bg == "reset" ) then
+				if style_a.bg ~= "reset" or (show_background and style_c.bg ~= "reset") then
+					if not show_background or (show_background and style_c.bg == "reset") then
 						separator_style.fg = style_a.bg
 						if show_background then
 							separator_style.bg = style_c.bg
@@ -459,9 +500,9 @@ function Yatline.line.get:tabs(side)
 				close:style(separator_style)
 
 				if in_side == Side.LEFT then
-					lines[#lines + 1] = ui.Line { span, close }
+					lines[#lines + 1] = ui.Line({ span, close })
 				else
-					lines[#lines + 1] = ui.Line { open, span }
+					lines[#lines + 1] = ui.Line({ open, span })
 				end
 			else
 				separator_style.fg = style_c.fg
@@ -573,7 +614,7 @@ function Yatline.coloreds.get:count()
 
 	local coloreds = {
 		{ string.format(" %s %d ", selected_icon, num_selected), selected_fg },
-		{ string.format(" %s %d ", yanked_icon, num_yanked),     yanked_fg }
+		{ string.format(" %s %d ", yanked_icon, num_yanked), yanked_fg },
 	}
 
 	return coloreds
@@ -586,8 +627,8 @@ function Yatline.coloreds.get:task_states()
 
 	local coloreds = {
 		{ string.format(" %s %d ", task_total_icon, tasks.total), task_total_fg },
-		{ string.format(" %s %d ", task_succ_icon, tasks.succ),   task_succ_fg },
-		{ string.format(" %s %d ", task_fail_icon, tasks.fail),   task_fail_fg }
+		{ string.format(" %s %d ", task_succ_icon, tasks.succ), task_succ_fg },
+		{ string.format(" %s %d ", task_fail_icon, tasks.fail), task_fail_fg },
 	}
 
 	return coloreds
@@ -599,7 +640,7 @@ function Yatline.coloreds.get:task_workload()
 	local tasks = cx.tasks.progress
 
 	local coloreds = {
-		{ string.format(" %s %d ", task_found_icon, tasks.found),         task_found_fg },
+		{ string.format(" %s %d ", task_found_icon, tasks.found), task_found_fg },
 		{ string.format(" %s %d ", task_processed_icon, tasks.processed), task_processed_fg },
 	}
 
@@ -621,7 +662,6 @@ function Yatline.coloreds.get:string_based_component(component_name, fg, params)
 		else
 			output = getter()
 		end
-
 
 		if output ~= nil and output ~= "" then
 			return { { " " .. output .. " ", fg } }
@@ -646,7 +686,13 @@ end
 --- @param num_section_c_components integer Number of components in section-c.
 --- @return table section_line_components Array of line components whether or not connected with separators.
 --- @see connect_separator To know how component and separator connected.
-local function config_components_separators(section_components, component_type, in_side, num_section_b_components, num_section_c_components)
+local function config_components_separators(
+	section_components,
+	component_type,
+	in_side,
+	num_section_b_components,
+	num_section_c_components
+)
 	local num_section_components = #section_components
 	local section_line_components = {}
 	for i, component in ipairs(section_components) do
@@ -681,7 +727,7 @@ local function config_components_separators(section_components, component_type, 
 							separator_style.bg = style_c.bg
 						end
 					else
-							separator_style.bg = style_c.bg
+						separator_style.bg = style_c.bg
 					end
 				end
 
@@ -714,9 +760,27 @@ local function config_components(section_a_components, section_b_components, sec
 	local num_section_b_components = #section_b_components
 	local num_section_c_components = #section_c_components
 
-	local section_a_line_components = config_components_separators(section_a_components, ComponentType.A, in_side, num_section_b_components, num_section_c_components)
-	local section_b_line_components = config_components_separators(section_b_components, ComponentType.B, in_side, num_section_b_components, num_section_c_components)
-	local section_c_line_components = config_components_separators(section_c_components, ComponentType.C, in_side, num_section_b_components, num_section_c_components)
+	local section_a_line_components = config_components_separators(
+		section_a_components,
+		ComponentType.A,
+		in_side,
+		num_section_b_components,
+		num_section_c_components
+	)
+	local section_b_line_components = config_components_separators(
+		section_b_components,
+		ComponentType.B,
+		in_side,
+		num_section_b_components,
+		num_section_c_components
+	)
+	local section_c_line_components = config_components_separators(
+		section_c_components,
+		ComponentType.C,
+		in_side,
+		num_section_b_components,
+		num_section_c_components
+	)
 
 	return section_a_line_components, section_b_line_components, section_c_line_components
 end
@@ -751,7 +815,8 @@ local function config_side(side)
 
 			if component_group then
 				if component.custom then
-					section_components[#section_components + 1] = { component_group.create(component.name, in_section), component_group.has_separator }
+					section_components[#section_components + 1] =
+						{ component_group.create(component.name, in_section), component_group.has_separator }
 				else
 					local getter = component_group.get[component.name]
 
@@ -764,7 +829,8 @@ local function config_side(side)
 						end
 
 						if output ~= nil and output ~= "" then
-							section_components[#section_components + 1] = { component_group.create(output, in_section), component_group.has_separator }
+							section_components[#section_components + 1] =
+								{ component_group.create(output, in_section), component_group.has_separator }
 						end
 					end
 				end
@@ -784,7 +850,8 @@ end
 local function config_line(side, in_side)
 	local section_a_components, section_b_components, section_c_components = config_side(side)
 
-	local section_a_line_components, section_b_line_components, section_c_line_components = config_components(section_a_components, section_b_components, section_c_components, in_side)
+	local section_a_line_components, section_b_line_components, section_c_line_components =
+		config_components(section_a_components, section_b_components, section_c_components, in_side)
 
 	if in_side == Side.RIGHT then
 		section_a_line_components = reverse_order(section_a_line_components)
@@ -796,10 +863,10 @@ local function config_line(side, in_side)
 	local section_b_line = ui.Line(section_b_line_components)
 	local section_c_line = ui.Line(section_c_line_components)
 
-	if  in_side == Side.LEFT then
-		return ui.Line {section_a_line, section_b_line, section_c_line}
+	if in_side == Side.LEFT then
+		return ui.Line({ section_a_line, section_b_line, section_c_line })
 	else
-		return ui.Line {section_c_line, section_b_line, section_a_line}
+		return ui.Line({ section_c_line, section_b_line, section_a_line })
 	end
 end
 
@@ -852,8 +919,16 @@ return {
 			display_status_line = true
 		end
 
-		local header_line = config.header_line or { left = { section_a = {}, section_b = {}, section_c = {} }, right = { section_a = {}, section_b = {}, section_c = {} } }
-		local status_line = config.status_line or { left = { section_a = {}, section_b = {}, section_c = {} }, right = { section_a = {}, section_b = {}, section_c = {} } }
+		local header_line = config.header_line
+			or {
+				left = { section_a = {}, section_b = {}, section_c = {} },
+				right = { section_a = {}, section_b = {}, section_c = {} },
+			}
+		local status_line = config.status_line
+			or {
+				left = { section_a = {}, section_b = {}, section_c = {} },
+				right = { section_a = {}, section_b = {}, section_c = {} },
+			}
 
 		if config.theme then
 			config = config.theme
@@ -897,8 +972,8 @@ return {
 			style_a_un_set_bg = "brightred"
 		end
 
-		style_b = config.style_b or { bg = "brightblack", fg =  "brightwhite" }
-		style_c = config.style_c or { bg = "black", fg =  "brightwhite" }
+		style_b = config.style_b or { bg = "brightblack", fg = "brightwhite" }
+		style_c = config.style_c or { bg = "black", fg = "brightwhite" }
 
 		permissions_t_fg = config.permissions_t_fg or "green"
 		permissions_r_fg = config.permissions_r_fg or "yellow"
@@ -991,8 +1066,8 @@ return {
 			local left = progress.total - progress.succ
 			return {
 				gauge
-				:percent(percent)
-				:label(ui.Span(string.format("%3d%%, %d left", percent, left)):style(THEME.status.progress_label)),
+					:percent(percent)
+					:label(ui.Span(string.format("%3d%%, %d left", percent, left)):style(THEME.status.progress_label)),
 			}
 		end
 
@@ -1004,15 +1079,21 @@ return {
 
 					return {
 						config_paragraph(self._area, left_line),
-						ui.Text(right_line):area(self._area):align(ui.Text.RIGHT)
+						ui.Text(right_line):area(self._area):align(ui.Text.RIGHT),
 					}
 				end
 
-				Header.children_add = function() return {} end
-				Header.children_remove = function() return {} end
+				Header.children_add = function()
+					return {}
+				end
+				Header.children_remove = function()
+					return {}
+				end
 			end
 		else
-			Header.redraw = function() return {} end
+			Header.redraw = function()
+				return {}
+			end
 		end
 
 		if display_status_line then
@@ -1029,17 +1110,25 @@ return {
 					}
 				end
 
-				Status.children_add = function() return {} end
-				Status.children_remove = function() return {} end
+				Status.children_add = function()
+					return {}
+				end
+				Status.children_remove = function()
+					return {}
+				end
 			end
 		else
-			Status.redraw = function() return {} end
+			Status.redraw = function()
+				return {}
+			end
 		end
 
 		Root.layout = function(self)
 			local constraints = {}
 			for _, component in ipairs(component_positions) do
-				if (component == "header" and display_header_line) or (component == "status" and display_status_line) then
+				if
+					(component == "header" and display_header_line) or (component == "status" and display_status_line)
+				then
 					table.insert(constraints, ui.Constraint.Length(1))
 				elseif component == "tab" then
 					table.insert(constraints, ui.Constraint.Fill(1))
