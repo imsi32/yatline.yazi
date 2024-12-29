@@ -242,11 +242,18 @@ function Yatline.string.get:hovered_name(config)
 	local trim_length = config.trim_length or 6
 	local show_symlink = config.show_symlink or false
 
-	local linked = (show_symlink and hovered.link_to ~= nil) and (" -> " .. tostring(hovered.link_to)) or ""
+	local link_delimiter = " -> "
+	local linked = (show_symlink and hovered.link_to ~= nil) and (link_delimiter .. tostring(hovered.link_to)) or ""
 
 	if trimed then
 		local trimmed_name = trim_filename(hovered.name, max_length, trim_length)
-		local trimmed_linked = trim_filename(linked, max_length, trim_length)
+		local trimmed_linked = #linked ~= 0
+				and link_delimiter .. trim_filename(
+					string.sub(linked, #link_delimiter + 1, -1),
+					max_length,
+					trim_length
+				)
+			or ""
 		return trimmed_name .. trimmed_linked
 	else
 		return hovered.name .. linked
