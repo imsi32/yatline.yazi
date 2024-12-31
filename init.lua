@@ -156,96 +156,6 @@ end
 -- Helper Functions --
 --==================--
 
---- Get the next UTF-8 character position and its byte length
---- @param str string The string to process
---- @param pos integer Current position in the string
---- @return integer next_pos Next position after current character
-local function next_utf8_char(str, pos)
-	local c = string.byte(str, pos)
-	if c >= 0 and c <= 127 then
-		return pos + 1
-	elseif c >= 194 and c <= 223 then
-		return pos + 2
-	elseif c >= 224 and c <= 239 then
-		return pos + 3
-	elseif c >= 240 and c <= 244 then
-		return pos + 4
-	else
-		return pos + 1
-	end
-end
-
---- Get the previous UTF-8 character position
---- @param str string The string to process
---- @param pos integer Current position in the string
---- @return integer prev_pos Position of the previous character
-local function prev_utf8_char(str, pos)
-	if pos <= 1 then return 0 end
-	
-	local c = string.byte(str, pos)
-	if c >= 128 and c <= 191 then
-		pos = pos - 1
-		while pos > 0 and string.byte(str, pos) >= 128 and string.byte(str, pos) <= 191 do
-			pos = pos - 1
-		end
-	else
-		pos = pos - 1
-	end
-	return pos
-end
-
---- Count the number of UTF-8 characters in a string
---- @param str string The string to count characters in
---- @return integer count Number of UTF-8 characters
-local function count_utf8_chars(str)
-	local len = 0
-	local pos = 1
-	local bytes = #str
-	while pos <= bytes do
-		len = len + 1
-		pos = next_utf8_char(str, pos)
-	end
-	return len
-end
-
---- Trims the filename if it is longer than the max_length.
---- @param filename string The name of a file which will be trimmed.
---- @param max_length integer Maximum length of the filename.
---- @param trim_length integer Length of the trimmed filename.
---- @return string trimmed_filename Trimmed filename.
-local function trim_filename(filename, max_length, trim_length)
-	if not max_length or not trim_length then
-		return filename
-	end
-
-	local len = count_utf8_chars(filename)
-	if len <= max_length then
-		return filename
-	end
-
-	-- Get prefix bytes position
-	local prefix_end = 0
-	local count = 0
-	local pos = 1
-	while pos <= #filename and count < trim_length do
-		count = count + 1
-		prefix_end = pos
-		pos = next_utf8_char(filename, pos)
-	end
-
-	-- Get suffix bytes position
-	local suffix_start = #filename + 1
-	count = 0
-	pos = #filename
-	while pos > 0 and count < trim_length do
-		pos = prev_utf8_char(filename, pos)
-		count = count + 1
-		suffix_start = pos + 1
-	end
-
-	return string.sub(filename, 1, prefix_end) .. "..." .. string.sub(filename, suffix_start)
-end
-
 --- Gets the file name from given file extension.
 --- @param file_name string The name of a file whose extension will be taken.
 --- @return string file_extension Extension of a file.
@@ -271,6 +181,105 @@ local function reverse_order(array)
 	return reversed
 end
 
+--- the number of characters in a UTF-8 string
+--- @param s string The string to process.
+--- @return integer The number of characters in the string.
+local function utf8len(s)
+	-- count the number of non-continuing bytes
+	return select(2, s:gsub("[^\128-\193]", ""))
+end
+
+--- like string.sub() but i, j are utf8 strings
+--- a utf8-safe string.sub()
+--- @param s string The string to process.
+--- @param i integer The start position.
+--- @param j integer The end position.
+--- @return string The substring.
+local function utf8sub(s, i, j)
+	-- pattern for matching UTF-8 characters
+	local pattern = "[%z\1-\127\194-\244][\128-\191]*"
+
+	-- helper function for position calculation
+	--- @param pos integer The position of the character.
+	--- @param len integer The length of the string.
+	--- @return integer The relative position of the character.
+	local function posrelat(pos, len)
+		if pos < 0 then
+			pos = len + pos + 1
+		end
+		return pos
+	end
+
+	-- helper function to iterate over UTF-8 chars
+	local function chars(_s, no_subs)
+		local function map(f)
+			local _i = 0
+			if no_subs then
+				for b, e in _s:gmatch("()" .. pattern .. "()") do
+					_i = _i + 1
+					local c = e - b
+					f(_i, c, b)
+				end
+			else
+				for b, c in _s:gmatch("()(" .. pattern .. ")") do
+					_i = _i + 1
+					f(_i, c, b)
+				end
+			end
+		end
+		return coroutine.wrap(function()
+			return map(coroutine.yield)
+		end)
+	end
+
+	local l = utf8len(s)
+
+	i = posrelat(i, l)
+	j = j and posrelat(j, l) or l
+
+	if i < 1 then
+		i = 1
+	end
+	if j > l then
+		j = l
+	end
+
+	if i > j then
+		return ""
+	end
+
+	local diff = j - i
+	local iter = chars(s, true)
+
+	-- advance up to i
+	for _ = 1, i - 1 do
+		iter()
+	end
+
+	local c, b = select(2, iter())
+
+	-- becareful with the edge case of empty string
+	if not b then
+		return ""
+	end
+
+	-- i and j are the same, single-character sub
+	if diff == 0 then
+		return string.sub(s, b, b + c - 1)
+	end
+
+	i = b
+
+	-- advance up to j
+	for _ = 1, diff - 1 do
+		iter()
+	end
+
+	c, b = select(2, iter())
+
+	return string.sub(s, i, b + c - 1)
+end
+
 --- Trims the filename if it is longer than the max_length.
 --- @param filename string The name of a file which will be trimmed.
 --- @param max_length integer Maximum length of the filename.
@@ -282,39 +291,17 @@ local function trim_filename(filename, max_length, trim_length)
 	end
 
 	-- Count UTF-8 characters
-	local len = 0
-	local pos = 1
-	local bytes = #filename
-	while pos <= bytes do
-		len = len + 1
-		pos = next_utf8_char(filename, pos)
-	end
+	local len = utf8len(filename)
 
 	if len <= max_length then
 		return filename
 	end
 
-	-- Get prefix bytes position
-	local prefix_end = 0
-	local count = 0
-	pos = 1
-	while pos <= bytes and count < trim_length do
-		count = count + 1
-		prefix_end = pos
-		pos = next_utf8_char(filename, pos)
+	if len <= trim_length * 2 then
+		return filename
 	end
 
-	-- Get suffix bytes position
-	local suffix_start = bytes + 1
-	count = 0
-	pos = bytes
-	while pos > 0 and count < trim_length do
-		pos = prev_utf8_char(filename, pos)
-		count = count + 1
-		suffix_start = pos + 1
-	end
-
-	return string.sub(filename, 1, prefix_end) .. "..." .. string.sub(filename, suffix_start)
+	return utf8sub(filename, 1, trim_length) .. "..." .. utf8sub(filename, len - trim_length + 1, len)
 end
 
 --========================--
