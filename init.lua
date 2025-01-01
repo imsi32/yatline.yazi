@@ -368,14 +368,33 @@ function Yatline.string.get:hovered_name(config)
 	end
 end
 
+
+--- Configuration for getting hovered file's path
+--- @class HoveredPathConfig
+--- @field trimed? boolean Whether to trim the file path if it's too long (default: false)
+--- @field max_length? integer Maximum length of the file path (default: 24)
+--- @field trim_length? integer Length of each end when trimming (default: 10)
 --- Gets the hovered file's path of the current active tab.
+--- @param config? HoveredPathConfig Configuration for getting hovered file's path
 --- @return string path Current active tab's hovered file's path.
-function Yatline.string.get:hovered_path()
+function Yatline.string.get:hovered_path(config)
 	local hovered = cx.active.current.hovered
-	if hovered then
-		return ya.readable_path(tostring(hovered.url))
-	else
+	if not hovered then
 		return ""
+	end
+
+	if not config then
+		return ya.readable_path(tostring(hovered.url))
+	end
+
+	local trimed = config.trimed or false
+	local max_length = config.max_length or 24
+	local trim_length = config.trim_length or 10
+
+	if trimed then
+		return trim_filename(ya.readable_path(tostring(hovered.url)), max_length, trim_length)
+	else
+		return ya.readable_path(tostring(hovered.url))
 	end
 end
 
