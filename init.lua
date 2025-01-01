@@ -368,7 +368,6 @@ function Yatline.string.get:hovered_name(config)
 	end
 end
 
-
 --- Configuration for getting hovered file's path
 --- @class HoveredPathConfig
 --- @field trimed? boolean Whether to trim the file path if it's too long (default: false)
@@ -459,9 +458,15 @@ function Yatline.string.get:hovered_file_extension(show_icon)
 	end
 end
 
+--- Configuration for getting curent active tab's path
+--- @class TabPathConfig
+--- @field trimed? boolean Whether to trim the current active tab's path if it's too long (default: false)
+--- @field max_length? integer Maximum length of the current active tab's path (default: 24)
+--- @field trim_length? integer Length of each end when trimming (default: 10)
 --- Gets the path of the current active tab.
+--- @param config? TabPathConfig Configuration for getting current active tab's path
 --- @return string path Current active tab's path.
-function Yatline.string.get:tab_path()
+function Yatline.string.get:tab_path(config)
 	local cwd = cx.active.current.cwd
 	local filter = cx.active.current.files.filter
 
@@ -476,7 +481,19 @@ function Yatline.string.get:tab_path()
 		suffix = string.format("%s, filter: %s)", search, tostring(filter))
 	end
 
-	return ya.readable_path(tostring(cx.active.current.cwd)) .. suffix
+	if not config then
+		return ya.readable_path(tostring(cwd)) .. suffix
+	end
+
+	local trimed = config.trimed or false
+	local max_length = config.max_length or 24
+	local trim_length = config.trim_length or 10
+
+	if trimed then
+		return trim_filename(ya.readable_path(tostring(cwd)), max_length, trim_length) .. suffix
+	else
+		return ya.readable_path(tostring(cwd)) .. suffix
+	end
 end
 
 --- Gets the mode of active tab.
