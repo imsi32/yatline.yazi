@@ -330,7 +330,7 @@ end
 --- @class HoveredNameConfig
 --- @field trimed? boolean Whether to trim the filename if it's too long (default: false)
 --- @field max_length? integer Maximum length of the filename (default: 24)
---- @field trim_length? integer Length of each end when trimming (default: 6)
+--- @field trim_length? integer Length of each end when trimming (default: 10)
 --- @field show_symlink? boolean Whether to show symlink target (default: false)
 --- Gets the hovered file's name of the current active tab.
 --- @param config? HoveredNameConfig Configuration for getting hovered file's name
@@ -347,7 +347,7 @@ function Yatline.string.get:hovered_name(config)
 
 	local trimed = config.trimed or false
 	local max_length = config.max_length or 24
-	local trim_length = config.trim_length or 6
+	local trim_length = config.trim_length or 10
 	local show_symlink = config.show_symlink or false
 
 	local link_delimiter = " -> "
