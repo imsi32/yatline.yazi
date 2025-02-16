@@ -1050,6 +1050,21 @@ local function config_paragraph(area, line)
 	end
 end
 
+local function merge_tables(base, override)
+    local merged = {}
+
+    for key, value in pairs(base) do
+        merged[key] = value
+    end
+
+    for key, value in pairs(override) do
+	if key ~= "theme" then
+		merged[key] = value  -- Override or add key
+	end
+    end
+    return merged
+end
+
 return {
 	setup = function(_, config)
 		config = config or {}
@@ -1082,7 +1097,7 @@ return {
 			}
 
 		if config.theme then
-			config = config.theme
+			config = merge_tables(config.theme, config)
 		end
 
 		if config.section_separator then
