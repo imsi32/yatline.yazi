@@ -59,6 +59,12 @@ local permissions_s_fg
 
 local tab_width
 
+local filter_fg
+local search_label
+local filter_label
+local no_filter_label
+local flatten_label
+	
 local selected_icon
 local copied_icon
 local cut_icon
@@ -748,6 +754,46 @@ function Yatline.coloreds.get:permissions()
 	end
 end
 
+--- Configuration for getting curent filter
+--- @class TabPathConfig
+--- @field search_label? string Search label (default: "search")
+--- @field filter_label? string Filter label (default: "filter")
+--- @field no_filter_label? string No filter label (default: "no filter")
+--- @field flatten_label? string Flatten label (default: "flatten")
+--- @field fg_color? string Foreground color of the filter (default: "brightyellow")
+--- Gets the specified file filters, i.e. search / filter / flatten (empty search).
+--- @param config? TabPathConfig Configuration for getting current filter
+--- @return Coloreds coloreds Current active tab's file filter
+function Yatline.coloreds.get:filter()
+	local cwd = cx.active.current.cwd
+	local filter = cx.active.current.files.filter
+
+	local text
+
+	local search = ""
+	if cwd.is_search then
+		search = #cwd:frag() > 0 and string.format("%s: %s", search_label, cwd:frag()) or flatten_label
+	end
+
+	if not filter then
+		text = search == "" and search or search
+	elseif search == "" then
+		text = string.format("%s: %s", filter_label, tostring(filter))
+	else
+		text = string.format("%s, %s: %s", search, filter_label, tostring(filter))
+	end
+
+	if text == "" then
+		return { { string.format("%s", no_filter_label), filter_fg }, }
+	end
+
+	local coloreds = {
+		{ string.format(" %s ", text), filter_fg },
+	}
+
+	return coloreds
+end
+
 --- Gets the number of selected and yanked files of the active tab.
 --- @return Coloreds coloreds Active tab's number of selected and yanked files.
 function Yatline.coloreds.get:count()
@@ -1131,6 +1177,25 @@ return {
 		permissions_w_fg = config.permissions_w_fg or "red"
 		permissions_x_fg = config.permissions_x_fg or "cyan"
 		permissions_s_fg = config.permissions_s_fg or "white"
+
+		local default_filter_fg = "brightyellow"
+		local default_search_label = " search"
+		local default_filter_label = " filter"
+		local default_no_filter_label = ""
+		local default_flatten_label = " flatten"
+		if config.filter then
+			filter_fg = config.filter.fg
+			search_label = config.filter.search_label and config.filter.search_label or default_search_label
+			filter_label = config.filter.filter_label and config.filter.filter_label or default_filter_label
+			no_filter_label = config.filter.no_filter_label and config.filter.no_filter_label or default_no_filter_label
+			flatten_label = config.filter.flatten_label and config.filter.flatten_label or default_flatten_label
+		else
+			filter_fg = default_filter_fg
+			search_label = default_search_label
+			filter_label = default_filter_label
+			no_filter_label = default_no_filter_label
+			flatten_label = default_flatten_label
+		end
 
 		if config.selected then
 			selected_fg = config.selected.fg
