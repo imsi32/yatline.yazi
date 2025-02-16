@@ -753,6 +753,8 @@ end
 function Yatline.coloreds.get:count()
 	local num_yanked = #cx.yanked
 	local num_selected = #cx.active.selected
+	local num_files = #cx.active.current.files
+	local filter_is_on = cx.active.current.files.filter or cx.active.current.cwd.is_search
 
 	local yanked_fg, yanked_icon
 	if cx.yanked.is_cut then
@@ -762,8 +764,11 @@ function Yatline.coloreds.get:count()
 		yanked_fg = copied_fg
 		yanked_icon = copied_icon
 	end
-
+	local files_count_icon = ""
+	local files_count_color = filter_is_on and "brightyellow" or "white"
+	
 	local coloreds = {
+		{ string.format(" %s %d ", files_count_icon, num_files), files_count_color },
 		{ string.format(" %s %d ", selected_icon, num_selected), selected_fg },
 		{ string.format(" %s %d ", yanked_icon, num_yanked), yanked_fg },
 	}
