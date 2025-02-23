@@ -1180,11 +1180,11 @@ return {
 		local default_no_filter_label = ""
 		local default_flatten_label = " flatten"
 		if config.filter then
-			filter_fg = config.filter.fg
-			search_label = config.filter.search_label and config.filter.search_label or default_search_label
-			filter_label = config.filter.filter_label and config.filter.filter_label or default_filter_label
-			no_filter_label = config.filter.no_filter_label and config.filter.no_filter_label or default_no_filter_label
-			flatten_label = config.filter.flatten_label and config.filter.flatten_label or default_flatten_label
+			filter_fg = config.filter.fg or default_filter_fg
+			search_label = config.filter.search_label or default_search_label
+			filter_label = config.filter.filter_label or default_filter_label
+			no_filter_label = config.filter.no_filter_label or default_no_filter_label
+			flatten_label = config.filter.flatten_label or default_flatten_label
 		else
 			filter_fg = default_filter_fg
 			search_label = default_search_label
