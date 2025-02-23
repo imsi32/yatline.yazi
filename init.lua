@@ -783,7 +783,11 @@ function Yatline.coloreds.get:filter()
 		text = string.format("%s, %s: %s", search, filter_label, tostring(filter))
 	end
 
-	return { { string.format(" %s ", text ~= "" and text or no_filter_label), filter_fg }, }
+	if text == "" then
+		text = no_filter_label
+	end
+
+	return { { text ~= "" and string.format(" %s ", text) or "", filter_fg }, }
 end
 
 --- Gets the number of selected and yanked files of the active tab.
