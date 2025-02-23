@@ -1050,21 +1050,6 @@ local function config_paragraph(area, line)
 	end
 end
 
-local function merge_tables(base, override)
-    local merged = {}
-
-    for key, value in pairs(base) do
-        merged[key] = value
-    end
-
-    for key, value in pairs(override) do
-	if key ~= "theme" then
-		merged[key] = value  -- Override or add key
-	end
-    end
-    return merged
-end
-
 return {
 	setup = function(_, config)
 		config = config or {}
@@ -1097,7 +1082,11 @@ return {
 			}
 
 		if config.theme then
-			config = merge_tables(config.theme, config)
+			for key, value in pairs(config.theme) do
+				if not config[key] then
+					config[key] = value
+				end
+			end
 		end
 
 		if config.section_separator then
@@ -1210,6 +1199,8 @@ return {
 			task_processed_icon = "󰐍"
 			task_processed_fg = "green"
 		end
+
+		config = nil
 
 		Progress.partial_render = function(self)
 			local progress = cx.tasks.progress
