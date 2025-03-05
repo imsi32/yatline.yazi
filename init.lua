@@ -1082,7 +1082,11 @@ return {
 			}
 
 		if config.theme then
-			config = config.theme
+			for key, value in pairs(config.theme) do
+				if not config[key] then
+					config[key] = value
+				end
+			end
 		end
 
 		if config.section_separator then
@@ -1195,6 +1199,8 @@ return {
 			task_processed_icon = "󰐍"
 			task_processed_fg = "green"
 		end
+
+		config = nil
 
 		Progress.partial_render = function(self)
 			local progress = cx.tasks.progress
