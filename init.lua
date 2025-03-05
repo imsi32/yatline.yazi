@@ -1210,9 +1210,9 @@ return {
 
 			local gauge = ui.Gauge():area(self._area)
 			if progress.fail == 0 then
-				gauge = gauge:gauge_style(THEME.status.progress_normal)
+				gauge = gauge:gauge_style(th.status.progress_normal)
 			else
-				gauge = gauge:gauge_style(THEME.status.progress_error)
+				gauge = gauge:gauge_style(th.status.progress_error)
 			end
 
 			local percent = 99
@@ -1224,7 +1224,7 @@ return {
 			return {
 				gauge
 					:percent(percent)
-					:label(ui.Span(string.format("%3d%%, %d left", percent, left)):style(THEME.status.progress_label)),
+					:label(ui.Span(string.format("%3d%%, %d left", percent, left)):style(th.status.progress_label)),
 			}
 		end
 
