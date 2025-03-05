@@ -62,10 +62,14 @@ local tab_width
 local selected_icon
 local copied_icon
 local cut_icon
+local files_icon
+local filtereds_icon
 
 local selected_fg
 local copied_fg
 local cut_fg
+local files_fg
+local filtereds_fg
 
 local task_total_icon
 local task_succ_icon
@@ -748,13 +752,13 @@ function Yatline.coloreds.get:permissions()
 	end
 end
 
---- Gets the number of selected and yanked files of the active tab.
---- @return Coloreds coloreds Active tab's number of selected and yanked files.
-function Yatline.coloreds.get:count()
+--- Gets the number of selected and yanked files and also number of files or filtered files of the active tab.
+--- @param filter? boolean Whether or not number of files (or filtered files) will be shown.
+--- @return Coloreds coloreds Active tab's number of selected and yanked files and also number of files or filtered files
+function Yatline.coloreds.get:count(filter)
 	local num_yanked = #cx.yanked
 	local num_selected = #cx.active.selected
 	local num_files = #cx.active.current.files
-	local filter_is_on = cx.active.current.files.filter or cx.active.current.cwd.is_search
 
 	local yanked_fg, yanked_icon
 	if cx.yanked.is_cut then
@@ -764,14 +768,29 @@ function Yatline.coloreds.get:count()
 		yanked_fg = copied_fg
 		yanked_icon = copied_icon
 	end
-	local files_count_icon = ""
-	local files_count_color = filter_is_on and "brightyellow" or "white"
-	
-	local coloreds = {
-		{ string.format(" %s %d ", files_count_icon, num_files), files_count_color },
-		{ string.format(" %s %d ", selected_icon, num_selected), selected_fg },
-		{ string.format(" %s %d ", yanked_icon, num_yanked), yanked_fg },
-	}
+
+	local files_count_fg, files_count_icon
+	if cx.active.current.files.filter or cx.active.current.cwd.is_search then
+		files_count_icon = filtereds_icon
+		files_count_fg = filtereds_fg
+	else
+		files_count_icon = files_icon
+		files_count_fg = files_fg
+	end
+
+	local coloreds
+	if filter then
+		coloreds = {
+			{ string.format(" %s %d ", files_count_icon, num_files), files_count_fg },
+			{ string.format(" %s %d ", selected_icon, num_selected), selected_fg },
+			{ string.format(" %s %d ", yanked_icon, num_yanked), yanked_fg },
+		}
+	else
+		coloreds = {
+			{ string.format(" %s %d ", selected_icon, num_selected), selected_fg },
+			{ string.format(" %s %d ", yanked_icon, num_yanked), yanked_fg },
+		}
+	end
 
 	return coloreds
 end
@@ -1159,6 +1178,22 @@ return {
 		else
 			cut_icon = ""
 			cut_fg = "red"
+		end
+
+		if config.files then
+			files_icon = config.files.icon
+			files_fg = config.files.fg
+		else
+			files_icon = ""
+			files_fg = "blue"
+		end
+
+		if config.filtereds then
+			filtereds_icon = config.filtereds.icon
+			filtereds_fg = config.filtereds.fg
+		else
+			filtereds_icon = ""
+			filtereds_fg = "magenta"
 		end
 
 		if config.total then
