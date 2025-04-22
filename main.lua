@@ -1105,6 +1105,10 @@ return {
 				right = { section_a = {}, section_b = {}, section_c = {} },
 			}
 
+		config.theme = (not rt.term.light and config.theme_dark)
+			or (rt.term.light and config.theme_light)
+			or config.theme
+
 		if config.theme then
 			for key, value in pairs(config.theme) do
 				if not config[key] then
