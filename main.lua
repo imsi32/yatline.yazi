@@ -998,8 +998,10 @@ local function config_side(side)
 
 			if component_group then
 				if component.custom then
-					section_components[#section_components + 1] =
-						{ component_group.create(component.name, in_section), component_group.has_separator }
+					if component.name ~= nil and component.name ~= "" and #component.name ~= 0 then
+						section_components[#section_components + 1] =
+							{ component_group.create(component.name, in_section), component_group.has_separator }
+					end
 				else
 					local getter = component_group.get[component.name]
 
