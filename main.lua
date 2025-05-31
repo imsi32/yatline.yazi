@@ -433,10 +433,11 @@ function Yatline.string.get:hovered_ownership()
 		if not hovered.cha.uid or not hovered.cha.gid then
 			return ""
 		end
-		if not ya.user_name(hovered.cha.uid) or not ya.group_name(hovered.cha.gid) then
-			return ""
-		end
-		return ya.user_name(hovered.cha.uid) .. ":" .. ya.group_name(hovered.cha.gid)
+
+		local username = ya.user_name(hovered.cha.uid) or tostring(hovered.cha.uid)
+		local groupname = ya.group_name(hovered.cha.gid) or tostring(hovered.cha.gid)
+
+		return username .. ":" .. groupname
 	else
 		return ""
 	end
