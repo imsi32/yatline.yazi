@@ -430,7 +430,10 @@ function Yatline.string.get:hovered_ownership()
 	local hovered = cx.active.current.hovered
 
 	if hovered then
-		if not hovered.cha.uid then
+		if not hovered.cha.uid or not hovered.cha.gid then
+			return ""
+		end
+		if not ya.user_name(hovered.cha.uid) or not ya.group_name(hovered.cha.gid) then
 			return ""
 		end
 		return ya.user_name(hovered.cha.uid) .. ":" .. ya.group_name(hovered.cha.gid)
