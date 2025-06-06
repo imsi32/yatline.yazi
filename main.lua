@@ -1371,11 +1371,19 @@ return {
 					local right_line = config_line(status_line.right, Side.RIGHT)
 					local right_width = right_line:width()
 
-					return {
+					local progress_components = Progress:new(self._area, right_width):redraw()
+					local result = {
 						config_paragraph(self._area, left_line),
 						ui.Text(right_line):area(self._area):align(ui.Text.RIGHT),
-						table.unpack(Progress:new(self._area, right_width):redraw()),
 					}
+
+					if progress_components and type(progress_components) == "table" then
+						for _, component in ipairs(progress_components) do
+							table.insert(result, component)
+						end
+					end
+
+					return result
 				end
 
 				Status.children_add = function()
