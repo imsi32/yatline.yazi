@@ -1316,7 +1316,7 @@ return {
 		Progress.partial_render = function(self)
 			local progress = cx.tasks.progress
 			if progress.total == 0 then
-				return { config_paragraph(self._area) }
+				return config_paragraph(self._area)
 			end
 
 			local gauge = ui.Gauge():area(self._area)
@@ -1332,11 +1332,9 @@ return {
 			end
 
 			local left = progress.total - progress.succ
-			return {
-				gauge
-					:percent(percent)
-					:label(ui.Span(string.format("%3d%%, %d left", percent, left)):style(th.status.progress_label)),
-			}
+			return gauge
+				:percent(percent)
+				:label(ui.Span(string.format("%3d%%, %d left", percent, left)):style(th.status.progress_label))
 		end
 
 		if display_header_line then
@@ -1347,7 +1345,7 @@ return {
 
 					return {
 						config_paragraph(self._area, left_line),
-						ui.Text(right_line):area(self._area):align(ui.Text.RIGHT),
+						right_line:area(self._area):align(ui.Align.RIGHT),
 					}
 				end
 
@@ -1373,8 +1371,8 @@ return {
 
 					return {
 						config_paragraph(self._area, left_line),
-						ui.Text(right_line):area(self._area):align(ui.Text.RIGHT),
-						table.unpack(Progress:new(self._area, right_width):redraw()),
+						right_line:area(self._area):align(ui.Align.RIGHT),
+						table.unpack(ui.redraw(Progress:new(self._area, right_width))),
 					}
 				end
 
@@ -1422,6 +1420,8 @@ return {
 					i = i + 1
 				end
 			end
+
+			table.insert(childrens, Modal:new(self._area))
 
 			self._children = childrens
 		end
