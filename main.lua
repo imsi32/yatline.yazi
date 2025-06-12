@@ -1,3 +1,4 @@
+--- @since 25.5.31
 --- @diagnostic disable: undefined-global, undefined-field
 --- @alias Mode Mode Comes from Yazi.
 --- @alias Rect Rect Comes from Yazi.
