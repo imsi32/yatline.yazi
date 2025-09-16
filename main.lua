@@ -1314,30 +1314,6 @@ return {
 
 		config = nil
 
-		Progress.partial_render = function(self)
-			local progress = cx.tasks.progress
-			if progress.total == 0 then
-				return config_paragraph(self._area)
-			end
-
-			local gauge = ui.Gauge():area(self._area)
-			if progress.fail == 0 then
-				gauge = gauge:gauge_style(th.status.progress_normal)
-			else
-				gauge = gauge:gauge_style(th.status.progress_error)
-			end
-
-			local percent = 99
-			if progress.found ~= 0 then
-				percent = math.min(99, ya.round(progress.processed * 100 / progress.found))
-			end
-
-			local left = progress.total - progress.succ
-			return gauge
-				:percent(percent)
-				:label(ui.Span(string.format("%3d%%, %d left", percent, left)):style(th.status.progress_label))
-		end
-
 		if display_header_line then
 			if show_line(header_line) then
 				Header.redraw = function(self)
