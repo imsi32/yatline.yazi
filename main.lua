@@ -127,8 +127,6 @@ Yatline.config = {
 
 local separator_style = { bg = nil, fg = nil }
 
-local section_order = { "section_a", "section_b", "section_c" }
-
 --=================--
 -- Component Setup --
 --=================--
@@ -948,27 +946,64 @@ local function config_components_separators(
 
 			section_line_components[i] = connect_separator(component[1], in_side, separator_type)
 		else
-			if in_side == Side.LEFT then
-				section_line_components[i] = component[1]
-			else
-				section_line_components[i] = component[1]
-			end
+			section_line_components[i] = component[1]
 		end
 	end
 
 	return section_line_components
 end
 
---- Leads the given parameters to the other functions.
---- @param section_a_components table Components array whose components are in section-a of either side.
---- @param section_b_components table Components array whose components are in section-b of either side.
---- @param section_c_components table Components array whose components are in section-c of either side.
---- @param in_side Side Left or right side of the either header-line or status-line.
---- @return table section_a_line_components Array of components whose components are connected to separator and are in section-a of either side.
---- @return table section_b_line_components Array of components whose components are connected to separator and are in section-b of either side.
---- @return table section_c_line_components Array of components whose components are connected to separator and are in section-c of either side.
---- @see config_components_separators To know how separators are configured.
-local function config_components(section_a_components, section_b_components, section_c_components, in_side)
+--- Creates configured section according to its components' config.
+--- @param section table Array of components' config in a section.
+--- @param component_type ComponentType Which section that components will be.
+--- @return table section_components Configured components array whose components are in section.
+local function config_section(section, component_type)
+	local section_components = {}
+
+	for _, component in ipairs(section) do
+		local component_group = Yatline[component.type]
+
+		if component_group then
+			if component.custom then
+				if component.name ~= nil and component.name ~= "" and #component.name ~= 0 then
+					section_components[#section_components + 1] =
+						{ component_group.create(component.name, component_type), component_group.has_separator }
+				end
+			else
+				local getter = component_group.get[component.name]
+
+				if getter then
+					local output
+					if component.params then
+						output = getter(component_group.get, table.unpack(component.params))
+					else
+						output = getter()
+					end
+
+					if output ~= nil and output ~= "" then
+						section_components[#section_components + 1] =
+							{ component_group.create(output, component_type), component_group.has_separator }
+					end
+				end
+			end
+		end
+	end
+
+	return section_components
+end
+
+--- Automatically creates and configures either header-line or status-line.
+--- @param side Config Configuration of either left or right side.
+--- @param in_side Side Which side components will be.
+--- @return table left_components Components array whose components are in left side of the line.
+--- @return table right_components Components array whose components are in right side of the line.
+--- @see config_side To know how components are gotten from side's config.
+--- @see config_components To know how components are configured.
+local function config_line(side, in_side)
+	local section_a_components = config_section(side.section_a, ComponentType.A)
+	local section_b_components = config_section(side.section_b, ComponentType.B)
+	local section_c_components = config_section(side.section_c, ComponentType.C)
+
 	local num_section_b_components = #section_b_components
 	local num_section_c_components = #section_c_components
 
@@ -993,79 +1028,6 @@ local function config_components(section_a_components, section_b_components, sec
 		num_section_b_components,
 		num_section_c_components
 	)
-
-	return section_a_line_components, section_b_line_components, section_c_line_components
-end
-
---- Automatically creates and configures either left or right side according to their config.
---- @param side Config Configuration of either left or right side.
---- @return table section_a_components Components array whose components are in section-a of either side.
---- @return table section_b_components Components array whose components are in section-b of either side.
---- @return table section_c_components Components array whose components are in section-c of either side.
-local function config_side(side)
-	local section_a_components = {}
-	local section_b_components = {}
-	local section_c_components = {}
-
-	for _, section in ipairs(section_order) do
-		local components = side[section]
-
-		local in_section, section_components
-		if section == "section_a" then
-			in_section = ComponentType.A
-			section_components = section_a_components
-		elseif section == "section_b" then
-			in_section = ComponentType.B
-			section_components = section_b_components
-		else
-			in_section = ComponentType.C
-			section_components = section_c_components
-		end
-
-		for _, component in ipairs(components) do
-			local component_group = Yatline[component.type]
-
-			if component_group then
-				if component.custom then
-					if component.name ~= nil and component.name ~= "" and #component.name ~= 0 then
-						section_components[#section_components + 1] =
-							{ component_group.create(component.name, in_section), component_group.has_separator }
-					end
-				else
-					local getter = component_group.get[component.name]
-
-					if getter then
-						local output
-						if component.params then
-							output = getter(component_group.get, table.unpack(component.params))
-						else
-							output = getter()
-						end
-
-						if output ~= nil and output ~= "" then
-							section_components[#section_components + 1] =
-								{ component_group.create(output, in_section), component_group.has_separator }
-						end
-					end
-				end
-			end
-		end
-	end
-
-	return section_a_components, section_b_components, section_c_components
-end
-
---- Automatically creates and configures either header-line or status-line.
---- @param side Config Configuration of either left or right side.
---- @return table left_components Components array whose components are in left side of the line.
---- @return table right_components Components array whose components are in right side of the line.
---- @see config_side To know how components are gotten from side's config.
---- @see config_components To know how components are configured.
-local function config_line(side, in_side)
-	local section_a_components, section_b_components, section_c_components = config_side(side)
-
-	local section_a_line_components, section_b_line_components, section_c_line_components =
-		config_components(section_a_components, section_b_components, section_c_components, in_side)
 
 	if in_side == Side.RIGHT then
 		section_a_line_components = reverse_order(section_a_line_components)
