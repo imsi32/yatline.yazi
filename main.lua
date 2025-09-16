@@ -331,34 +331,27 @@ function Yatline.string.create(string, component_type)
 	return ui.Line({ span })
 end
 
---- Configuration for getting hovered file's name
---- @class HoveredNameConfig
---- @field trimed? boolean Whether to trim the filename if it's too long (default: false)
---- @field max_length? integer Maximum length of the filename (default: 24)
---- @field trim_length? integer Length of each end when trimming (default: 10)
---- @field show_symlink? boolean Whether to show symlink target (default: false)
 --- Gets the hovered file's name of the current active tab.
---- @param config? HoveredNameConfig Configuration for getting hovered file's name
+--- @param trimmed? boolean Whether to trim the filename if it's too long (default: false)
+--- @param max_length? integer Maximum length of the filename (default: 24)
+--- @param trim_length? integer Length of each end when trimming (default: 10)
+--- @param show_symlink? boolean Whether to show symlink target (default: false)
 --- @return string name Current active tab's hovered file's name
-function Yatline.string.get:hovered_name(config)
+function Yatline.string.get:hovered_name(trimmed, max_length, trim_length, show_symlink)
+	trimmed = trimmed or false
+	max_length = max_length or 24
+	trim_length = trim_length or 10
+	show_symlink = show_symlink or false
+
 	local hovered = cx.active.current.hovered
 	if not hovered then
 		return ""
 	end
 
-	if not config then
-		return hovered.name
-	end
-
-	local trimed = config.trimed or false
-	local max_length = config.max_length or 24
-	local trim_length = config.trim_length or 10
-	local show_symlink = config.show_symlink or false
-
 	local link_delimiter = " -> "
 	local linked = (show_symlink and hovered.link_to ~= nil) and (link_delimiter .. tostring(hovered.link_to)) or ""
 
-	if trimed then
+	if trimmed then
 		local trimmed_name = trim_filename(hovered.name, max_length, trim_length)
 		local trimmed_linked = #linked ~= 0
 				and link_delimiter .. trim_filename(
@@ -373,29 +366,22 @@ function Yatline.string.get:hovered_name(config)
 	end
 end
 
---- Configuration for getting hovered file's path
---- @class HoveredPathConfig
---- @field trimed? boolean Whether to trim the file path if it's too long (default: false)
---- @field max_length? integer Maximum length of the file path (default: 24)
---- @field trim_length? integer Length of each end when trimming (default: 10)
 --- Gets the hovered file's path of the current active tab.
---- @param config? HoveredPathConfig Configuration for getting hovered file's path
+--- @param trimmed? boolean Whether to trim the file path if it's too long (default: false)
+--- @param max_length? integer Maximum length of the file path (default: 24)
+--- @param trim_length? integer Length of each end when trimming (default: 10)
 --- @return string path Current active tab's hovered file's path.
-function Yatline.string.get:hovered_path(config)
+function Yatline.string.get:hovered_path(trimmed, max_length, trim_length)
+	trimmed = trimmed or false
+	max_length = max_length or 24
+	trim_length = trim_length or 10
+
 	local hovered = cx.active.current.hovered
 	if not hovered then
 		return ""
 	end
 
-	if not config then
-		return ya.readable_path(tostring(hovered.url))
-	end
-
-	local trimed = config.trimed or false
-	local max_length = config.max_length or 24
-	local trim_length = config.trim_length or 10
-
-	if trimed then
+	if trimmed then
 		return trim_filename(ya.readable_path(tostring(hovered.url)), max_length, trim_length)
 	else
 		return ya.readable_path(tostring(hovered.url))
@@ -471,18 +457,18 @@ function Yatline.string.get:hovered_file_extension(show_icon)
 	end
 end
 
---- Configuration for getting curent active tab's path
---- @class TabPathConfig
---- @field trimed? boolean Whether to trim the current active tab's path if it's too long (default: false)
---- @field max_length? integer Maximum length of the current active tab's path (default: 24)
---- @field trim_length? integer Length of each end when trimming (default: 10)
 --- Gets the path of the current active tab.
---- @param config? TabPathConfig Configuration for getting current active tab's path
+--- @param trimmed? boolean Whether to trim the current active tab's path if it's too long (default: false)
+--- @param max_length? integer Maximum length of the current active tab's path (default: 24)
+--- @param trim_length? integer Length of each end when trimming (default: 10)
 --- @return string path Current active tab's path.
-function Yatline.string.get:tab_path(config)
+function Yatline.string.get:tab_path(trimmed, max_length, trim_length)
+	trimmed = trimmed or false
+	max_length = max_length or 24
+	trim_length = trim_length or 10
+
 	local cwd = cx.active.current.cwd
 	local filter = cx.active.current.files.filter
-
 	local search = cwd.is_search and string.format(" (search: %s", cwd.frag) or ""
 
 	local suffix
@@ -494,15 +480,7 @@ function Yatline.string.get:tab_path(config)
 		suffix = string.format("%s, filter: %s)", search, tostring(filter))
 	end
 
-	if not config then
-		return ya.readable_path(tostring(cwd)) .. suffix
-	end
-
-	local trimed = config.trimed or false
-	local max_length = config.max_length or 24
-	local trim_length = config.trim_length or 10
-
-	if trimed then
+	if trimmed then
 		return trim_filename(ya.readable_path(tostring(cwd)), max_length, trim_length) .. suffix
 	else
 		return ya.readable_path(tostring(cwd)) .. suffix
