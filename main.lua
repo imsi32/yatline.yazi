@@ -1050,15 +1050,15 @@ end
 --- @param line Config Configuration of either header-line or status-line.
 --- @return boolean show_line Returns yes if it contains components, otherwise returns no.
 local function show_line(line)
-	local total_components = 0
-
 	for _, side in pairs(line) do
 		for _, section in pairs(side) do
-			total_components = total_components + #section
+			if #section ~= 0 then
+				return true
+			end
 		end
 	end
 
-	return total_components ~= 0
+	return false
 end
 
 --- Creates and configures paragraph which is used as left or right of either
