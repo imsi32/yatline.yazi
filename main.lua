@@ -23,68 +23,109 @@
 -- Type Declaration --
 --==================--
 
-Yatline = {}
-
 local Side = { LEFT = 0, RIGHT = 1 }
 local SeparatorType = { OUTER = 0, INNER = 1 }
 local ComponentType = { A = 0, B = 1, C = 2 }
+
+Yatline = {}
+Yatline.config = {
+	section_separator = { open = "", close = "" },
+	part_separator = { open = "", close = "" },
+	inverse_separator = { open = "", close = "" },
+
+	style_a = {
+		bg = "white",
+		fg = "black",
+		bg_mode = {
+			normal = "white",
+			select = "brightyellow",
+			un_set = "brightred",
+		},
+	},
+	style_b = { bg = "brightblack", fg = "brightwhite" },
+	style_c = { bg = "black", fg = "brightwhite" },
+
+	permissions_t_fg = "green",
+	permissions_r_fg = "yellow",
+	permissions_w_fg = "red",
+	permissions_x_fg = "cyan",
+	permissions_s_fg = "white",
+
+	tab_width = 20,
+	tab_use_inverse = false,
+
+	selected = { icon = "󰻭", fg = "yellow" },
+	copied = { icon = "", fg = "green" },
+	cut = { icon = "", fg = "red" },
+
+	files = { icon = "", fg = "blue" },
+	filtereds = { icon = "", fg = "magenta" },
+
+	total = { icon = "󰮍", fg = "yellow" },
+	succ = { icon = "", fg = "green" },
+	fail = { icon = "", fg = "red" },
+	found = { icon = "󰮕", fg = "blue" },
+	processed = { icon = "󰐍", fg = "green" },
+
+	show_background = true,
+
+	display_header_line = true,
+	display_status_line = true,
+
+	component_positions = { "header", "tab", "status" },
+
+	header_line = {
+		left = {
+			section_a = {
+				{ type = "line", custom = false, name = "tabs", params = { "left" } },
+			},
+			section_b = {},
+			section_c = {},
+		},
+		right = {
+			section_a = {
+				{ type = "string", custom = false, name = "date", params = { "%A, %d %B %Y" } },
+			},
+			section_b = {
+				{ type = "string", custom = false, name = "date", params = { "%X" } },
+			},
+			section_c = {},
+		},
+	},
+
+	status_line = {
+		left = {
+			section_a = {
+				{ type = "string", custom = false, name = "tab_mode" },
+			},
+			section_b = {
+				{ type = "string", custom = false, name = "hovered_size" },
+			},
+			section_c = {
+				{ type = "string", custom = false, name = "hovered_path" },
+				{ type = "coloreds", custom = false, name = "count" },
+			},
+		},
+		right = {
+			section_a = {
+				{ type = "string", custom = false, name = "cursor_position" },
+			},
+			section_b = {
+				{ type = "string", custom = false, name = "cursor_percentage" },
+			},
+			section_c = {
+				{ type = "string", custom = false, name = "hovered_file_extension", params = { true } },
+				{ type = "coloreds", custom = false, name = "permissions" },
+			},
+		},
+	},
+}
 
 --=========================--
 -- Variable Initialization --
 --=========================--
 
-local section_separator_open
-local section_separator_close
-
-local inverse_separator_open
-local inverse_separator_close
-
-local part_separator_open
-local part_separator_close
-
 local separator_style = { bg = nil, fg = nil }
-
-local style_a
-local style_b
-local style_c
-
-local style_a_normal_bg
-local style_a_select_bg
-local style_a_un_set_bg
-
-local permissions_t_fg
-local permissions_r_fg
-local permissions_w_fg
-local permissions_x_fg
-local permissions_s_fg
-
-local tab_width
-
-local selected_icon
-local copied_icon
-local cut_icon
-local files_icon
-local filtereds_icon
-
-local selected_fg
-local copied_fg
-local cut_fg
-local files_fg
-local filtereds_fg
-
-local task_total_icon
-local task_succ_icon
-local task_fail_icon
-local task_found_icon
-local task_processed_icon
-
-local task_total_fg
-local task_succ_fg
-local task_fail_fg
-local task_found_fg
-local task_processed_fg
-
-local show_background
 
 local section_order = { "section_a", "section_b", "section_c" }
 
@@ -97,11 +138,11 @@ local section_order = { "section_a", "section_b", "section_c" }
 --- @see cx.active.mode To get the active tab's mode.
 local function set_mode_style(mode)
 	if mode.is_select then
-		style_a.bg = style_a_select_bg
+		Yatline.config.style_a.bg = Yatline.config.style_a.bg_mode.select
 	elseif mode.is_unset then
-		style_a.bg = style_a_un_set_bg
+		Yatline.config.style_a.bg = Yatline.config.style_a.bg_mode.un_set
 	else
-		style_a.bg = style_a_normal_bg
+		Yatline.config.style_a.bg = Yatline.config.style_a.bg_mode.normal
 	end
 end
 
@@ -111,11 +152,11 @@ end
 --- @see Style To see how to style, in Yazi's documentation.
 local function set_component_style(component, component_type)
 	if component_type == ComponentType.A then
-		component:style(style_a):bold()
+		component:style(Yatline.config.style_a):bold()
 	elseif component_type == ComponentType.B then
-		component:style(style_b)
+		component:style(Yatline.config.style_b)
 	else
-		component:style(style_c)
+		component:style(Yatline.config.style_c)
 	end
 end
 
@@ -129,13 +170,13 @@ local function connect_separator(component, side, separator_type)
 	if
 		separator_type == SeparatorType.OUTER and not (separator_style.bg == "reset" and separator_style.fg == "reset")
 	then
-		open = ui.Span(section_separator_open)
-		close = ui.Span(section_separator_close)
+		open = ui.Span(Yatline.config.section_separator.open)
+		close = ui.Span(Yatline.config.section_separator.close)
 
 		if separator_style.fg == "reset" then
 			if separator_style.bg ~= "reset" and separator_style.bg ~= nil then
-				open = ui.Span(inverse_separator_open)
-				close = ui.Span(inverse_separator_close)
+				open = ui.Span(Yatline.config.inverse_separator.open)
+				close = ui.Span(Yatline.config.inverse_separator.close)
 
 				separator_style.fg, separator_style.bg = separator_style.bg, separator_style.fg
 			else
@@ -143,8 +184,8 @@ local function connect_separator(component, side, separator_type)
 			end
 		end
 	else
-		open = ui.Span(part_separator_open)
-		close = ui.Span(part_separator_close)
+		open = ui.Span(Yatline.config.part_separator.open)
+		close = ui.Span(Yatline.config.part_separator.close)
 	end
 
 	open:style(separator_style)
@@ -579,8 +620,8 @@ function Yatline.line.get:tabs(side)
 
 	for i = 1, tabs do
 		local text = i
-		if tab_width > 2 then
-			text = ya.truncate(text .. " " .. cx.tabs[i].name, { max = tab_width })
+		if Yatline.config.tab_width > 2 then
+			text = ya.truncate(text .. " " .. cx.tabs[i].name, { max = Yatline.config.tab_width })
 		end
 
 		separator_style = { bg = nil, fg = nil }
@@ -589,53 +630,59 @@ function Yatline.line.get:tabs(side)
 			set_mode_style(cx.tabs[i].mode)
 			set_component_style(span, ComponentType.A)
 
-			if style_a.bg ~= "reset" or show_background then
-				separator_style.fg = style_a.bg
-				if show_background then
-					separator_style.bg = style_c.bg
+			if Yatline.config.style_a.bg ~= "reset" or Yatline.config.show_background then
+				separator_style.fg = Yatline.config.style_a.bg
+				if Yatline.config.show_background then
+					separator_style.bg = Yatline.config.style_c.bg
 				end
 
 				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.OUTER)
 			else
-				separator_style.fg = style_a.fg
+				separator_style.fg = Yatline.config.style_a.fg
 
 				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.INNER)
 			end
 		else
 			local span = ui.Span(" " .. text .. " ")
-			if show_background then
+			if Yatline.config.show_background then
 				set_component_style(span, ComponentType.C)
 			else
-				span:style({ fg = style_c.fg })
+				span:style({ fg = Yatline.config.style_c.fg })
 			end
 
 			if i == cx.tabs.idx - 1 then
 				set_mode_style(cx.tabs[i + 1].mode)
 
 				local open, close
-				if style_a.bg ~= "reset" or (show_background and style_c.bg ~= "reset") then
-					if not show_background or (show_background and style_c.bg == "reset") then
-						separator_style.fg = style_a.bg
-						if show_background then
-							separator_style.bg = style_c.bg
+				if
+					Yatline.config.style_a.bg ~= "reset"
+					or (Yatline.config.show_background and Yatline.config.style_c.bg ~= "reset")
+				then
+					if
+						not Yatline.config.show_background
+						or (Yatline.config.show_background and Yatline.config.style_c.bg == "reset")
+					then
+						separator_style.fg = Yatline.config.style_a.bg
+						if Yatline.config.show_background then
+							separator_style.bg = Yatline.config.style_c.bg
 						end
 
-						open = ui.Span(inverse_separator_open)
-						close = ui.Span(inverse_separator_close)
+						open = ui.Span(Yatline.config.inverse_separator.open)
+						close = ui.Span(Yatline.config.inverse_separator.close)
 					else
-						separator_style.bg = style_a.bg
-						if show_background then
-							separator_style.fg = style_c.bg
+						separator_style.bg = Yatline.config.style_a.bg
+						if Yatline.config.show_background then
+							separator_style.fg = Yatline.config.style_c.bg
 						end
 
-						open = ui.Span(section_separator_open)
-						close = ui.Span(section_separator_close)
+						open = ui.Span(Yatline.config.section_separator.open)
+						close = ui.Span(Yatline.config.section_separator.close)
 					end
 				else
-					separator_style.fg = style_c.fg
+					separator_style.fg = Yatline.config.style_c.fg
 
-					open = ui.Span(part_separator_open)
-					close = ui.Span(part_separator_close)
+					open = ui.Span(Yatline.config.part_separator.open)
+					close = ui.Span(Yatline.config.part_separator.close)
 				end
 
 				open:style(separator_style)
@@ -647,9 +694,9 @@ function Yatline.line.get:tabs(side)
 					lines[#lines + 1] = ui.Line({ open, span })
 				end
 			else
-				separator_style.fg = style_c.fg
-				if show_background then
-					separator_style.bg = style_c.bg
+				separator_style.fg = Yatline.config.style_c.fg
+				if Yatline.config.show_background then
+					separator_style.bg = Yatline.config.style_c.bg
 				end
 
 				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.INNER)
@@ -715,15 +762,15 @@ function Yatline.coloreds.get:permissions()
 			for i = 1, #perm do
 				local c = perm:sub(i, i)
 
-				local fg = permissions_t_fg
+				local fg = Yatline.config.permissions_t_fg
 				if c == "-" then
-					fg = permissions_s_fg
+					fg = Yatline.config.permissions_s_fg
 				elseif c == "r" then
-					fg = permissions_r_fg
+					fg = Yatline.config.permissions_r_fg
 				elseif c == "w" then
-					fg = permissions_w_fg
+					fg = Yatline.config.permissions_w_fg
 				elseif c == "x" or c == "s" or c == "S" or c == "t" or c == "T" then
-					fg = permissions_x_fg
+					fg = Yatline.config.permissions_x_fg
 				end
 
 				coloreds[i + 1] = { c, fg }
@@ -744,38 +791,40 @@ end
 --- @param filter? boolean Whether or not number of files (or filtered files) will be shown.
 --- @return Coloreds coloreds Active tab's number of selected and yanked files and also number of files or filtered files
 function Yatline.coloreds.get:count(filter)
+	filter = filter or false
+
 	local num_yanked = #cx.yanked
 	local num_selected = #cx.active.selected
 	local num_files = #cx.active.current.files
 
 	local yanked_fg, yanked_icon
 	if cx.yanked.is_cut then
-		yanked_fg = cut_fg
-		yanked_icon = cut_icon
+		yanked_fg = Yatline.config.cut.fg
+		yanked_icon = Yatline.config.cut.icon
 	else
-		yanked_fg = copied_fg
-		yanked_icon = copied_icon
+		yanked_fg = Yatline.config.copied.fg
+		yanked_icon = Yatline.config.copied.icon
 	end
 
 	local files_count_fg, files_count_icon
 	if cx.active.current.files.filter or cx.active.current.cwd.is_search then
-		files_count_icon = filtereds_icon
-		files_count_fg = filtereds_fg
+		files_count_fg = Yatline.config.filtereds.fg
+		files_count_icon = Yatline.config.filtereds.icon
 	else
-		files_count_icon = files_icon
-		files_count_fg = files_fg
+		files_count_fg = Yatline.config.files.fg
+		files_count_icon = Yatline.config.files.icon
 	end
 
 	local coloreds
 	if filter then
 		coloreds = {
 			{ string.format(" %s %d ", files_count_icon, num_files), files_count_fg },
-			{ string.format(" %s %d ", selected_icon, num_selected), selected_fg },
+			{ string.format(" %s %d ", Yatline.config.selected.icon, num_selected), Yatline.config.selected.fg },
 			{ string.format(" %s %d ", yanked_icon, num_yanked), yanked_fg },
 		}
 	else
 		coloreds = {
-			{ string.format(" %s %d ", selected_icon, num_selected), selected_fg },
+			{ string.format(" %s %d ", Yatline.config.selected.icon, num_selected), Yatline.config.selected.fg },
 			{ string.format(" %s %d ", yanked_icon, num_yanked), yanked_fg },
 		}
 	end
@@ -789,9 +838,9 @@ function Yatline.coloreds.get:task_states()
 	local tasks = cx.tasks.progress
 
 	local coloreds = {
-		{ string.format(" %s %d ", task_total_icon, tasks.total), task_total_fg },
-		{ string.format(" %s %d ", task_succ_icon, tasks.succ), task_succ_fg },
-		{ string.format(" %s %d ", task_fail_icon, tasks.fail), task_fail_fg },
+		{ string.format(" %s %d ", Yatline.config.total.icon, tasks.total), Yatline.config.total.fg },
+		{ string.format(" %s %d ", Yatline.config.succ.icon, tasks.succ), Yatline.config.succ.fg },
+		{ string.format(" %s %d ", Yatline.config.fail.icon, tasks.fail), Yatline.config.fail.fg },
 	}
 
 	return coloreds
@@ -803,8 +852,8 @@ function Yatline.coloreds.get:task_workload()
 	local tasks = cx.tasks.progress
 
 	local coloreds = {
-		{ string.format(" %s %d ", task_found_icon, tasks.found), task_found_fg },
-		{ string.format(" %s %d ", task_processed_icon, tasks.processed), task_processed_fg },
+		{ string.format(" %s %d ", Yatline.config.found.icon, tasks.found), Yatline.config.found.fg },
+		{ string.format(" %s %d ", Yatline.config.processed.icon, tasks.processed), Yatline.config.processed.fg },
 	}
 
 	return coloreds
@@ -865,32 +914,32 @@ local function config_components_separators(
 			local separator_type
 			if i ~= num_section_components then
 				if component_type == ComponentType.A then
-					separator_style = style_a
+					separator_style = Yatline.config.style_a
 				elseif component_type == ComponentType.B then
-					separator_style = style_b
+					separator_style = Yatline.config.style_b
 				else
-					separator_style = style_c
+					separator_style = Yatline.config.style_c
 				end
 
 				separator_type = SeparatorType.INNER
 			else
 				if component_type == ComponentType.A then
-					separator_style.fg = style_a.bg
+					separator_style.fg = Yatline.config.style_a.bg
 				elseif component_type == ComponentType.B then
-					separator_style.fg = style_b.bg
+					separator_style.fg = Yatline.config.style_b.bg
 				else
-					separator_style.fg = style_c.bg
+					separator_style.fg = Yatline.config.style_c.bg
 				end
 
 				if component_type == ComponentType.A and num_section_b_components ~= 0 then
-					separator_style.bg = style_b.bg
+					separator_style.bg = Yatline.config.style_b.bg
 				else
 					if num_section_c_components == 0 or component_type == ComponentType.C then
-						if show_background then
-							separator_style.bg = style_c.bg
+						if Yatline.config.show_background then
+							separator_style.bg = Yatline.config.style_c.bg
 						end
 					else
-						separator_style.bg = style_c.bg
+						separator_style.bg = Yatline.config.style_c.bg
 					end
 				end
 
@@ -1057,8 +1106,8 @@ end
 --- @return Paragraph paragraph Configured parapgraph.
 local function config_paragraph(area, line)
 	local line_array = { line } or {}
-	if show_background then
-		return ui.Text(line_array):area(area):style(style_c)
+	if Yatline.config.show_background then
+		return ui.Text(line_array):area(area):style(Yatline.config.style_c)
 	else
 		return ui.Text(line_array):area(area)
 	end
@@ -1066,237 +1115,56 @@ end
 
 return {
 	setup = function(_, config, pre_theme)
-		config = config or {}
+		if config then
+			for _, line in ipairs({ "header_line", "status_line" }) do
+				if config[line] then
+					for _, side in ipairs({ "left", "right" }) do
+						if config[line][side] then
+							for _, section in ipairs({ "section_a", "section_b", "section_c" }) do
+								config[line][side][section] = config[line][side][section] or {}
+							end
+						else
+							config[line][side] = {}
+							for _, section in ipairs({ "section_a", "section_b", "section_c" }) do
+								config[line][side][section] = {}
+							end
+						end
+					end
+				end
+			end
 
-		if config == 0 then
-			config = {
-				show_background = false,
+			config.theme = (not rt.term.light and config.theme_dark)
+				or (rt.term.light and config.theme_light)
+				or config.theme
 
-				header_line = {
-					left = {
-						section_a = {
-							{ type = "line", custom = false, name = "tabs", params = { "left" } },
-						},
-						section_b = {},
-						section_c = {},
-					},
-					right = {
-						section_a = {
-							{ type = "string", custom = false, name = "date", params = { "%A, %d %B %Y" } },
-						},
-						section_b = {
-							{ type = "string", custom = false, name = "date", params = { "%X" } },
-						},
-						section_c = {},
-					},
-				},
+			if config.theme then
+				for key, value in pairs(config.theme) do
+					if not config[key] then
+						config[key] = value
+					end
+				end
+			end
 
-				status_line = {
-					left = {
-						section_a = {
-							{ type = "string", custom = false, name = "tab_mode" },
-						},
-						section_b = {
-							{ type = "string", custom = false, name = "hovered_size" },
-						},
-						section_c = {
-							{ type = "string", custom = false, name = "hovered_path" },
-							{ type = "coloreds", custom = false, name = "count" },
-						},
-					},
-					right = {
-						section_a = {
-							{ type = "string", custom = false, name = "cursor_position" },
-						},
-						section_b = {
-							{ type = "string", custom = false, name = "cursor_percentage" },
-						},
-						section_c = {
-							{ type = "string", custom = false, name = "hovered_file_extension", params = { true } },
-							{ type = "coloreds", custom = false, name = "permissions" },
-						},
-					},
-				},
-			}
-		end
-
-		if pre_theme then
-			config.theme = pre_theme
-		end
-
-		tab_width = config.tab_width or 20
-
-		local component_positions = config.component_positions or { "header", "tab", "status" }
-
-		show_background = config.show_background or false
-
-		local display_header_line = config.display_header_line
-		if display_header_line == nil then
-			display_header_line = true
-		end
-
-		local display_status_line = config.display_status_line
-		if display_status_line == nil then
-			display_status_line = true
-		end
-
-		local header_line = config.header_line
-			or {
-				left = { section_a = {}, section_b = {}, section_c = {} },
-				right = { section_a = {}, section_b = {}, section_c = {} },
-			}
-		local status_line = config.status_line
-			or {
-				left = { section_a = {}, section_b = {}, section_c = {} },
-				right = { section_a = {}, section_b = {}, section_c = {} },
-			}
-
-		config.theme = (not rt.term.light and config.theme_dark)
-			or (rt.term.light and config.theme_light)
-			or config.theme
-
-		if config.theme then
-			for key, value in pairs(config.theme) do
-				if not config[key] then
-					config[key] = value
+			for key, value in pairs(config) do
+				if Yatline.config[key] then
+					Yatline.config[key] = value
 				end
 			end
 		end
 
-		if config.section_separator then
-			section_separator_open = config.section_separator.open
-			section_separator_close = config.section_separator.close
-		else
-			section_separator_open = ""
-			section_separator_close = ""
+		if pre_theme then
+			for key, value in pairs(pre_theme) do
+				if Yatline.config[key] then
+					Yatline.config[key] = value
+				end
+			end
 		end
 
-		if config.inverse_separator then
-			inverse_separator_open = config.inverse_separator.open
-			inverse_separator_close = config.inverse_separator.close
-		else
-			inverse_separator_open = ""
-			inverse_separator_close = ""
-		end
-
-		if config.part_separator then
-			part_separator_open = config.part_separator.open
-			part_separator_close = config.part_separator.close
-		else
-			part_separator_open = ""
-			part_separator_close = ""
-		end
-
-		if config.style_a then
-			style_a = { bg = config.style_a.bg_mode.normal, fg = config.style_a.fg }
-
-			style_a_normal_bg = config.style_a.bg_mode.normal
-			style_a_select_bg = config.style_a.bg_mode.select
-			style_a_un_set_bg = config.style_a.bg_mode.un_set
-		else
-			style_a = { bg = "white", fg = "black" }
-
-			style_a_normal_bg = "white"
-			style_a_select_bg = "brightyellow"
-			style_a_un_set_bg = "brightred"
-		end
-
-		style_b = config.style_b or { bg = "brightblack", fg = "brightwhite" }
-		style_c = config.style_c or { bg = "black", fg = "brightwhite" }
-
-		permissions_t_fg = config.permissions_t_fg or "green"
-		permissions_r_fg = config.permissions_r_fg or "yellow"
-		permissions_w_fg = config.permissions_w_fg or "red"
-		permissions_x_fg = config.permissions_x_fg or "cyan"
-		permissions_s_fg = config.permissions_s_fg or "white"
-
-		if config.selected then
-			selected_fg = config.selected.fg
-			selected_icon = config.selected.icon
-		else
-			selected_fg = "yellow"
-			selected_icon = "󰻭"
-		end
-
-		if config.copied then
-			copied_fg = config.copied.fg
-			copied_icon = config.copied.icon
-		else
-			copied_fg = "green"
-			copied_icon = ""
-		end
-
-		if config.cut then
-			cut_icon = config.cut.icon
-			cut_fg = config.cut.fg
-		else
-			cut_icon = ""
-			cut_fg = "red"
-		end
-
-		if config.files then
-			files_icon = config.files.icon
-			files_fg = config.files.fg
-		else
-			files_icon = ""
-			files_fg = "blue"
-		end
-
-		if config.filtereds then
-			filtereds_icon = config.filtereds.icon
-			filtereds_fg = config.filtereds.fg
-		else
-			filtereds_icon = ""
-			filtereds_fg = "magenta"
-		end
-
-		if config.total then
-			task_total_icon = config.total.icon
-			task_total_fg = config.total.fg
-		else
-			task_total_icon = "󰮍"
-			task_total_fg = "yellow"
-		end
-
-		if config.succ then
-			task_succ_icon = config.succ.icon
-			task_succ_fg = config.succ.fg
-		else
-			task_succ_icon = ""
-			task_succ_fg = "green"
-		end
-
-		if config.fail then
-			task_fail_icon = config.fail.icon
-			task_fail_fg = config.fail.fg
-		else
-			task_fail_icon = ""
-			task_fail_fg = "red"
-		end
-
-		if config.found then
-			task_found_icon = config.found.icon
-			task_found_fg = config.found.fg
-		else
-			task_found_icon = "󰮕"
-			task_found_fg = "blue"
-		end
-
-		if config.processed then
-			task_processed_icon = config.processed.icon
-			task_processed_fg = config.processed.fg
-		else
-			task_processed_icon = "󰐍"
-			task_processed_fg = "green"
-		end
-
-		config = nil
-
-		if display_header_line then
-			if show_line(header_line) then
+		if Yatline.config.display_header_line then
+			if show_line(Yatline.config.header_line) then
 				Header.redraw = function(self)
-					local left_line = config_line(header_line.left, Side.LEFT)
-					local right_line = config_line(header_line.right, Side.RIGHT)
+					local left_line = config_line(Yatline.config.header_line.left, Side.LEFT)
+					local right_line = config_line(Yatline.config.header_line.right, Side.RIGHT)
 
 					return {
 						config_paragraph(self._area, left_line),
@@ -1317,11 +1185,11 @@ return {
 			end
 		end
 
-		if display_status_line then
-			if show_line(status_line) then
+		if Yatline.config.display_status_line then
+			if show_line(Yatline.config.status_line) then
 				Status.redraw = function(self)
-					local left_line = config_line(status_line.left, Side.LEFT)
-					local right_line = config_line(status_line.right, Side.RIGHT)
+					local left_line = config_line(Yatline.config.status_line.left, Side.LEFT)
+					local right_line = config_line(Yatline.config.status_line.right, Side.RIGHT)
 					local right_width = right_line:width()
 
 					return {
@@ -1346,9 +1214,10 @@ return {
 
 		Root.layout = function(self)
 			local constraints = {}
-			for _, component in ipairs(component_positions) do
+			for _, component in ipairs(Yatline.config.component_positions) do
 				if
-					(component == "header" and display_header_line) or (component == "status" and display_status_line)
+					(component == "header" and Yatline.config.display_header_line)
+					or (component == "status" and Yatline.config.display_status_line)
 				then
 					table.insert(constraints, ui.Constraint.Length(1))
 				elseif component == "tab" then
@@ -1363,14 +1232,14 @@ return {
 			local childrens = {}
 
 			local i = 1
-			for _, component in ipairs(component_positions) do
-				if component == "header" and display_header_line then
+			for _, component in ipairs(Yatline.config.component_positions) do
+				if component == "header" and Yatline.config.display_header_line then
 					table.insert(childrens, Header:new(self._chunks[i], cx.active))
 					i = i + 1
 				elseif component == "tab" then
 					table.insert(childrens, Tab:new(self._chunks[i], cx.active))
 					i = i + 1
-				elseif component == "status" and display_status_line then
+				elseif component == "status" and Yatline.config.display_status_line then
 					table.insert(childrens, Status:new(self._chunks[i], cx.active))
 					i = i + 1
 				end
