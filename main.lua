@@ -6,28 +6,87 @@
 --- @alias Line Line Comes from Yazi.
 --- @alias Span Span Comes from Yazi.
 --- @alias Color Color Comes from Yazi.
---- @alias Config Config The config used for setup.
---- @alias Coloreds Coloreds The array returned by colorizer in {{string, Color}, {string, Color} ... } format
---- @alias Side # [ LEFT ... RIGHT ]
---- | `enums.LEFT` # The left side of either the header-line or status-line. [ LEFT ... ]
---- | `enums.RIGHT` # The right side of either the header-line or status-line. [ ... RIGHT]
---- @alias SeparatorType
---- | `enums.OUTER` # Separators on the outer side of sections. [ c o | c o | c o ... ] or [ ... o c | o c | o c ]
---- | `enums.INNER` # Separators on the inner side of sections. [ c i c | c i c | c i c ... ] or [ ... c i c | c i c | c i c ]
---- @alias ComponentType
---- | `enums.A` # Components on the first section. [ A | | ... ] or [ ... | | A ]
---- | `enums.B` # Components on the second section. [ | B | ... ] or [ ... | B | ]
---- | `enums.C` # Components on the third section. [ | | C ... ] or [ ... C | | ]
 
 --==================--
 -- Type Declaration --
 --==================--
 
-local Side = { LEFT = 0, RIGHT = 1 }
-local SeparatorType = { OUTER = 0, INNER = 1 }
-local ComponentType = { A = 0, B = 1, C = 2 }
+--- @enum Side
+local Side = {
+	LEFT = 0, -- The left side of either the header-line or status-line. [ LEFT ... ]
+	RIGHT = 1, -- The right side of either the header-line or status-line. [ ... RIGHT]
+}
 
+--- @enum SeparatorType
+local SeparatorType = {
+	OUTER = 0, -- Separators on the outer side of sections. [ c o | c o | c o ... ] or [ ... o c | o c | o c ]
+	INNER = 1, -- Separators on the inner side of sections. [ c i c | c i c | c i c ... ] or [ ... c i c | c i c | c i c ]
+}
+
+--- @enum ComponentType
+local ComponentType = {
+	A = 0, -- Components on the first section. [ A | | ... ] or [ ... | | A ]
+	B = 1, -- Components on the second section. [ | B | ... ] or [ ... | B | ]
+	C = 2, -- Components on the third section. [ | | C ... ] or [ ... C | | ]
+}
+
+--- @alias Colored [string, Color] Stores text and its foreground color.
+--- @alias Coloreds Colored[] The array of Coloreds.
+
+--- @generic T
+--- @alias T T Type of the component.
+
+--- @class Yatline
+--- @field config YatlineConfig Configuration of Yatline.
+--- @field string? {} Table that stores string components.
+--- @field line? {} Table that stores Line components.
+--- @field coloreds? {} Table that stores Coloreds components.
 Yatline = {}
+
+--- @class (exact) ComponentConfig
+--- @field type string Defines the type of the component (T).
+--- @field custom? boolean Toggles the usage of a function defined or name field.
+--- @field name string | T Either defined function name or variable of defined type T.
+--- @field params? {} Contains the parameters that can be used by the function called.
+
+--- @class (exact) SideConfig
+--- @field section_a ComponentConfig[] Array of configuration of components in the first section.
+--- @field section_b ComponentConfig[] Array of configuration of components in the second section.
+--- @field section_c ComponentConfig[] Array of configuration of components in the third section.
+
+--- @class (exact) LineConfig
+--- @field left SideConfig Configuration of the left side of the line.
+--- @field right SideConfig Configuration of the right side of the line.
+
+--- @class (exact) YatlineConfig
+--- @field section_separator {open: string, close: string} Separators that are between sections.
+--- @field part_separator {open: string, close: string} Separators that are between components.
+--- @field inverse_separator {open: string, close: string} Separators that are used when foreground color of separator is reset.
+--- @field style_a {bg: Color, fg: Color, bg_mode: {normal: Color, select: Color, un_set: Color}} Style of the first section.
+--- @field style_b {bg: Color, fg: Color} Style of the second section.
+--- @field style_c {bg: Color, fg: Color} Style of the third section.
+--- @field permissions_t_fg Color Foreground color of the type of permission.
+--- @field permissions_r_fg Color Foreground color of the read permission.
+--- @field permissions_w_fg Color Foreground color of the write permission.
+--- @field permissions_x_fg Color Foreground color of the execute permission.
+--- @field permissions_s_fg Color Foreground color of the separators between permission.
+--- @field tab_width integer Maximum tab width of the tabs component.
+--- @field selected {icon: string, fg: Color} Configuration for the count of files that selected.
+--- @field copied {icon: string, fg: Color} Configuration for the count of files that copied.
+--- @field cut {icon: string, fg: Color} Configuration for the count of files that cut.
+--- @field files {icon: string, fg: Color} Configuration for the count of files in the active tab.
+--- @field filtereds {icon: string, fg: Color} Configuration for the count of files in the active tab that are filtered.
+--- @field total {icon: string, fg: Color} Configuration for the count of progress tasks that finished.
+--- @field succ {icon: string, fg: Color} Configuration for the count of progress tasks that successed.
+--- @field fail {icon: string, fg: Color} Configuration for the count of progress tasks that failed.
+--- @field found {icon: string, fg: Color} Configuration for the workloads of all progress tasks.
+--- @field processed {icon: string, fg: Color} Configuration for the workloads of progressed tasks.
+--- @field show_background boolean Toggle the visibility of the background where no component exists.
+--- @field display_header_line boolean Toggle the visibility of the header-line.
+--- @field display_status_line boolean Toggle the visibility of the status-line.
+--- @field component_positions string[] Arrange positions of the Yazi sections.
+--- @field header_line LineConfig Configuration of header-line components.
+--- @field status_line LineConfig Configuration of status-line components.
 Yatline.config = {
 	section_separator = { open = "", close = "" },
 	part_separator = { open = "", close = "" },
@@ -52,7 +111,6 @@ Yatline.config = {
 	permissions_s_fg = "white",
 
 	tab_width = 20,
-	tab_use_inverse = false,
 
 	selected = { icon = "󰻭", fg = "yellow" },
 	copied = { icon = "", fg = "green" },
@@ -77,17 +135,17 @@ Yatline.config = {
 	header_line = {
 		left = {
 			section_a = {
-				{ type = "line", custom = false, name = "tabs", params = { "left" } },
+				{ type = "line", name = "tabs", params = { "left" } },
 			},
 			section_b = {},
 			section_c = {},
 		},
 		right = {
 			section_a = {
-				{ type = "string", custom = false, name = "date", params = { "%A, %d %B %Y" } },
+				{ type = "string", name = "date", params = { "%A, %d %B %Y" } },
 			},
 			section_b = {
-				{ type = "string", custom = false, name = "date", params = { "%X" } },
+				{ type = "string", name = "date", params = { "%X" } },
 			},
 			section_c = {},
 		},
@@ -96,26 +154,26 @@ Yatline.config = {
 	status_line = {
 		left = {
 			section_a = {
-				{ type = "string", custom = false, name = "tab_mode" },
+				{ type = "string", name = "tab_mode" },
 			},
 			section_b = {
-				{ type = "string", custom = false, name = "hovered_size" },
+				{ type = "string", name = "hovered_size" },
 			},
 			section_c = {
-				{ type = "string", custom = false, name = "hovered_path" },
-				{ type = "coloreds", custom = false, name = "count" },
+				{ type = "string", name = "hovered_path" },
+				{ type = "coloreds", name = "count" },
 			},
 		},
 		right = {
 			section_a = {
-				{ type = "string", custom = false, name = "cursor_position" },
+				{ type = "string", name = "cursor_position" },
 			},
 			section_b = {
-				{ type = "string", custom = false, name = "cursor_percentage" },
+				{ type = "string", name = "cursor_percentage" },
 			},
 			section_c = {
-				{ type = "string", custom = false, name = "hovered_file_extension", params = { true } },
-				{ type = "coloreds", custom = false, name = "permissions" },
+				{ type = "string", name = "hovered_file_extension", params = { true } },
+				{ type = "coloreds", name = "permissions" },
 			},
 		},
 	},
@@ -125,6 +183,8 @@ Yatline.config = {
 -- Variable Initialization --
 --=========================--
 
+--- Holds the style of the separator.
+--- @type {bg: string?, fg: string?}
 local separator_style = { bg = nil, fg = nil }
 
 --=================--
@@ -160,10 +220,10 @@ end
 
 --- Connects component to a separator.
 --- @param component Span Component that will be connected to separator.
---- @param side Side Left or right side of the either header-line or status-line.
+--- @param in_side Side Left or right side of the either header-line or status-line.
 --- @param separator_type SeparatorType Where will there be a separator in the section.
---- @return Line line A Line which has component and separator.
-local function connect_separator(component, side, separator_type)
+--- @return Line line A Line which may have either both component and separator, or component.
+local function connect_separator(component, in_side, separator_type)
 	local open, close
 	if
 		separator_type == SeparatorType.OUTER and not (separator_style.bg == "reset" and separator_style.fg == "reset")
@@ -172,7 +232,7 @@ local function connect_separator(component, side, separator_type)
 		close = ui.Span(Yatline.config.section_separator.close)
 
 		if separator_style.fg == "reset" then
-			if separator_style.bg ~= "reset" and separator_style.bg ~= nil then
+			if separator_style.bg ~= "" then
 				open = ui.Span(Yatline.config.inverse_separator.open)
 				close = ui.Span(Yatline.config.inverse_separator.close)
 
@@ -189,7 +249,7 @@ local function connect_separator(component, side, separator_type)
 	open:style(separator_style)
 	close:style(separator_style)
 
-	if side == Side.LEFT then
+	if in_side == Side.LEFT then
 		return ui.Line({ component, close })
 	else
 		return ui.Line({ open, component })
@@ -746,7 +806,7 @@ end
 
 --- Gets the hovered file's permissions of the current active tab.
 --- Unix-like systems only.
---- @return Coloreds coloreds Current active tab's hovered file's permissions
+--- @return Coloreds? coloreds Current active tab's hovered file's permissions
 function Yatline.coloreds.get:permissions()
 	local hovered = cx.active.current.hovered
 
@@ -778,10 +838,10 @@ function Yatline.coloreds.get:permissions()
 
 			return coloreds
 		else
-			return ""
+			return nil
 		end
 	else
-		return ""
+		return nil
 	end
 end
 
@@ -861,7 +921,7 @@ end
 --- @param component_name string String based component's name.
 --- @param fg Color Desired foreground color.
 --- @param params? table Array of parameters of string based component. It is optional.
---- @return Coloreds coloreds Array of solely array of string based component's string and desired foreground color.
+--- @return Coloreds? coloreds Array of solely array of string based component's string and desired foreground color.
 function Yatline.coloreds.get:string_based_component(component_name, fg, params)
 	local getter = Yatline.string.get[component_name]
 
@@ -876,10 +936,10 @@ function Yatline.coloreds.get:string_based_component(component_name, fg, params)
 		if output ~= nil and output ~= "" then
 			return { { " " .. output .. " ", fg } }
 		else
-			return ""
+			return nil
 		end
 	else
-		return ""
+		return nil
 	end
 end
 
@@ -889,7 +949,7 @@ end
 
 --- Configure separators if it is need to be added to the components.
 --- Connects them with each component.
---- @param section_components table Array of components in one of the sections.
+--- @param section_components [Line, boolean][] Array of components in one of the sections.
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
 --- @param in_side Side Left or right side of the either header-line or status-line.
 --- @param num_section_b_components integer Number of components in section-b.
@@ -906,11 +966,13 @@ local function config_components_separators(
 	local num_section_components = #section_components
 	local section_line_components = {}
 	for i, component in ipairs(section_components) do
-		if component[2] == true then
+		if component[2] == true then -- Does component have separator?
 			separator_style = { bg = nil, fg = nil }
 
 			local separator_type
-			if i ~= num_section_components then
+			if i ~= num_section_components then -- Does component is not at the end of the section?
+				separator_type = SeparatorType.INNER
+
 				if component_type == ComponentType.A then
 					separator_style = Yatline.config.style_a
 				elseif component_type == ComponentType.B then
@@ -918,9 +980,9 @@ local function config_components_separators(
 				else
 					separator_style = Yatline.config.style_c
 				end
+			else -- Does component is at the end of the section?
+				separator_type = SeparatorType.OUTER
 
-				separator_type = SeparatorType.INNER
-			else
 				if component_type == ComponentType.A then
 					separator_style.fg = Yatline.config.style_a.bg
 				elseif component_type == ComponentType.B then
@@ -931,17 +993,13 @@ local function config_components_separators(
 
 				if component_type == ComponentType.A and num_section_b_components ~= 0 then
 					separator_style.bg = Yatline.config.style_b.bg
-				else
-					if num_section_c_components == 0 or component_type == ComponentType.C then
-						if Yatline.config.show_background then
-							separator_style.bg = Yatline.config.style_c.bg
-						end
-					else
+				elseif num_section_c_components == 0 or component_type == ComponentType.C then
+					if Yatline.config.show_background then
 						separator_style.bg = Yatline.config.style_c.bg
 					end
+				else
+					separator_style.bg = Yatline.config.style_c.bg
 				end
-
-				separator_type = SeparatorType.OUTER
 			end
 
 			section_line_components[i] = connect_separator(component[1], in_side, separator_type)
@@ -954,34 +1012,35 @@ local function config_components_separators(
 end
 
 --- Creates configured section according to its components' config.
---- @param section table Array of components' config in a section.
+--- @param section ComponentConfig[] Array of components' config in a section.
 --- @param component_type ComponentType Which section that components will be.
---- @return table section_components Configured components array whose components are in section.
+--- @return [Line, boolean][] section_components Configured components array whose components are in section.
 local function config_section(section, component_type)
+	--- @type [Line, boolean][]
 	local section_components = {}
 
 	for _, component in ipairs(section) do
 		local component_group = Yatline[component.type]
 
-		if component_group then
-			if component.custom then
-				if component.name ~= nil and component.name ~= "" and #component.name ~= 0 then
-					section_components[#section_components + 1] =
+		if component_group then -- Does component group exist?
+			if component.custom then -- Does component is custom?
+				if component.name ~= nil and component.name ~= "" and #component.name ~= 0 then -- Does component name is valid?
+					section_components[#section_components + 1] = -- Insert component to the table.
 						{ component_group.create(component.name, component_type), component_group.has_separator }
 				end
 			else
-				local getter = component_group.get[component.name]
+				local getter = component_group.get[component.name] -- Get component function that will be called.
 
-				if getter then
-					local output
-					if component.params then
+				if getter then -- Does function exist?
+					local output -- Output of the function.
+					if component.params then -- Does component function has parameters?
 						output = getter(component_group.get, table.unpack(component.params))
 					else
 						output = getter()
 					end
 
-					if output ~= nil and output ~= "" then
-						section_components[#section_components + 1] =
+					if output ~= nil and output ~= "" then -- Does component is not empty?
+						section_components[#section_components + 1] = -- Insert component to the table.
 							{ component_group.create(output, component_type), component_group.has_separator }
 					end
 				end
@@ -993,13 +1052,14 @@ local function config_section(section, component_type)
 end
 
 --- Automatically creates and configures either header-line or status-line.
---- @param side Config Configuration of either left or right side.
+--- @param side SideConfig Configuration of either left or right side.
 --- @param in_side Side Which side components will be.
---- @return table left_components Components array whose components are in left side of the line.
---- @return table right_components Components array whose components are in right side of the line.
---- @see config_side To know how components are gotten from side's config.
---- @see config_components To know how components are configured.
+--- @return Line left_line Consist of components that are in left side of the line.
+--- @return Line right_line Consist of components that are in right side of the line.
+--- @see config_section To know how components are gotten from sections' config.
+--- @see config_components_separators To know how components are connected with separators.
 local function config_line(side, in_side)
+	-- Configures components of sections.
 	local section_a_components = config_section(side.section_a, ComponentType.A)
 	local section_b_components = config_section(side.section_b, ComponentType.B)
 	local section_c_components = config_section(side.section_c, ComponentType.C)
@@ -1007,6 +1067,7 @@ local function config_line(side, in_side)
 	local num_section_b_components = #section_b_components
 	local num_section_c_components = #section_c_components
 
+	-- Connects components of section by separators.
 	local section_a_line_components = config_components_separators(
 		section_a_components,
 		ComponentType.A,
@@ -1029,12 +1090,13 @@ local function config_line(side, in_side)
 		num_section_c_components
 	)
 
-	if in_side == Side.RIGHT then
+	if in_side == Side.RIGHT then -- Reverse the order of the components if it is in the right side.
 		section_a_line_components = reverse_order(section_a_line_components)
 		section_b_line_components = reverse_order(section_b_line_components)
 		section_c_line_components = reverse_order(section_c_line_components)
 	end
 
+	-- Combines components of section into single components.
 	local section_a_line = ui.Line(section_a_line_components)
 	local section_b_line = ui.Line(section_b_line_components)
 	local section_c_line = ui.Line(section_c_line_components)
@@ -1047,7 +1109,7 @@ local function config_line(side, in_side)
 end
 
 --- Checks if either header-line or status-line contains components.
---- @param line Config Configuration of either header-line or status-line.
+--- @param line LineConfig Configuration of either header-line or status-line.
 --- @return boolean show_line Returns yes if it contains components, otherwise returns no.
 local function show_line(line)
 	for _, side in pairs(line) do
@@ -1078,6 +1140,7 @@ end
 return {
 	setup = function(_, config, pre_theme)
 		if config then
+			-- Fills the sections that are not given if the line exists.
 			for _, line in ipairs({ "header_line", "status_line" }) do
 				if config[line] then
 					for _, side in ipairs({ "left", "right" }) do
@@ -1095,10 +1158,12 @@ return {
 				end
 			end
 
+			-- Get the current theme according to the light/dark mode. (default: config.theme)
 			config.theme = (not rt.term.light and config.theme_dark)
 				or (rt.term.light and config.theme_light)
 				or config.theme
 
+			-- Extracts theme fields to the config unless that fields does not exists.
 			if config.theme then
 				for key, value in pairs(config.theme) do
 					if not config[key] then
@@ -1107,6 +1172,7 @@ return {
 				end
 			end
 
+			-- Extracts config fields to the YatlineConfig if that fields exists.
 			for key, value in pairs(config) do
 				if Yatline.config[key] then
 					Yatline.config[key] = value
@@ -1114,6 +1180,7 @@ return {
 			end
 		end
 
+		-- Extracts pre_theme fields to the YatlineConfig if that fields exists.
 		if pre_theme then
 			for key, value in pairs(pre_theme) do
 				if Yatline.config[key] then
@@ -1122,14 +1189,14 @@ return {
 			end
 		end
 
-		if Yatline.config.display_header_line then
-			if show_line(Yatline.config.header_line) then
+		if Yatline.config.display_header_line then -- Controls displaying header-line.
+			if show_line(Yatline.config.header_line) then -- Controls recoding of header-line.
 				Header.redraw = function(self)
 					local left_line = config_line(Yatline.config.header_line.left, Side.LEFT)
 					local right_line = config_line(Yatline.config.header_line.right, Side.RIGHT)
 
 					return {
-						config_paragraph(self._area, left_line),
+						config_paragraph(self._area, left_line), -- Styles left_line if show_background set.
 						right_line:area(self._area):align(ui.Align.RIGHT),
 					}
 				end
@@ -1147,17 +1214,16 @@ return {
 			end
 		end
 
-		if Yatline.config.display_status_line then
-			if show_line(Yatline.config.status_line) then
+		if Yatline.config.display_status_line then -- Controls displaying status-line.
+			if show_line(Yatline.config.status_line) then -- Controls recoding of status-line.
 				Status.redraw = function(self)
 					local left_line = config_line(Yatline.config.status_line.left, Side.LEFT)
 					local right_line = config_line(Yatline.config.status_line.right, Side.RIGHT)
-					local right_width = right_line:width()
 
 					return {
-						config_paragraph(self._area, left_line),
+						config_paragraph(self._area, left_line), -- Styles left_line if show_background set.
 						right_line:area(self._area):align(ui.Align.RIGHT),
-						table.unpack(ui.redraw(Progress:new(self._area, right_width))),
+						table.unpack(ui.redraw(Progress:new(self._area, right_line:width()))), -- Inserts Progress bar.
 					}
 				end
 
@@ -1176,6 +1242,7 @@ return {
 
 		Root.layout = function(self)
 			local constraints = {}
+			-- Sets Yazi layout according to the given positions.
 			for _, component in ipairs(Yatline.config.component_positions) do
 				if
 					(component == "header" and Yatline.config.display_header_line)
@@ -1192,7 +1259,7 @@ return {
 
 		Root.build = function(self)
 			local childrens = {}
-
+			-- Fills the layout according to the given positions.
 			local i = 1
 			for _, component in ipairs(Yatline.config.component_positions) do
 				if component == "header" and Yatline.config.display_header_line then
