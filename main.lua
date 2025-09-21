@@ -179,14 +179,6 @@ Yatline.config = {
 	},
 }
 
---=========================--
--- Variable Initialization --
---=========================--
-
---- Holds the style of the separator.
---- @type {bg: string?, fg: string?}
-local separator_style = { bg = nil, fg = nil }
-
 --=================--
 -- Component Setup --
 --=================--
@@ -222,8 +214,9 @@ end
 --- @param component Span Component that will be connected to separator.
 --- @param in_side Side Left or right side of the either header-line or status-line.
 --- @param separator_type SeparatorType Where will there be a separator in the section.
+--- @param separator_style {bg: string?, fg: string?} Holds the style of the separator.
 --- @return Line line A Line which may have either both component and separator, or component.
-local function connect_separator(component, in_side, separator_type)
+local function connect_separator(component, in_side, separator_type, separator_style)
 	local open, close
 	if
 		separator_type == SeparatorType.OUTER and not (separator_style.bg == "reset" and separator_style.fg == "reset")
@@ -682,7 +675,7 @@ function Yatline.line.get:tabs(side)
 			text = ya.truncate(text .. " " .. cx.tabs[i].name, { max = Yatline.config.tab_width })
 		end
 
-		separator_style = { bg = nil, fg = nil }
+		local separator_style = { bg = nil, fg = nil }
 		if i == cx.tabs.idx then
 			local span = ui.Span(" " .. text .. " ")
 			set_mode_style(cx.tabs[i].mode)
@@ -694,11 +687,11 @@ function Yatline.line.get:tabs(side)
 					separator_style.bg = Yatline.config.style_c.bg
 				end
 
-				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.OUTER)
+				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.OUTER, separator_style)
 			else
 				separator_style.fg = Yatline.config.style_a.fg
 
-				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.INNER)
+				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.INNER, separator_style)
 			end
 		else
 			local span = ui.Span(" " .. text .. " ")
@@ -757,7 +750,7 @@ function Yatline.line.get:tabs(side)
 					separator_style.bg = Yatline.config.style_c.bg
 				end
 
-				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.INNER)
+				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.INNER, separator_style)
 			end
 		end
 	end
@@ -967,7 +960,7 @@ local function config_components_separators(
 	local section_line_components = {}
 	for i, component in ipairs(section_components) do
 		if component[2] == true then -- Does component have separator?
-			separator_style = { bg = nil, fg = nil }
+			local separator_style = { bg = nil, fg = nil }
 
 			local separator_type
 			if i ~= num_section_components then -- Does component is not at the end of the section?
@@ -1002,7 +995,7 @@ local function config_components_separators(
 				end
 			end
 
-			section_line_components[i] = connect_separator(component[1], in_side, separator_type)
+			section_line_components[i] = connect_separator(component[1], in_side, separator_type, separator_style)
 		else
 			section_line_components[i] = component[1]
 		end
