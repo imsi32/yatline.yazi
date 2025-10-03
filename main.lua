@@ -1184,21 +1184,24 @@ return {
 
 		if Yatline.config.display_header_line then -- Controls displaying header-line.
 			if show_line(Yatline.config.header_line) then -- Controls recoding of header-line.
+				-- Empties default Yazi header-line.
+				Header._left = {}
+				Header._right = {}
+
 				Header.redraw = function(self)
+					-- Gets Yazi components.
+					local right = self:children_redraw(self.RIGHT)
+					self._right_width = right:width()
+					local left = self:children_redraw(self.LEFT)
+
+					-- Gets Yatline components.
 					local left_line = config_line(Yatline.config.header_line.left, Side.LEFT)
 					local right_line = config_line(Yatline.config.header_line.right, Side.RIGHT)
 
 					return {
-						config_paragraph(self._area, left_line), -- Styles left_line if show_background set.
-						right_line:area(self._area):align(ui.Align.RIGHT),
+						config_paragraph(self._area, ui.Line({ left_line, left })), -- Styles left_line if show_background set.
+						ui.Line({ right, right_line }):area(self._area):align(ui.Align.RIGHT),
 					}
-				end
-
-				Header.children_add = function()
-					return {}
-				end
-				Header.children_remove = function()
-					return {}
 				end
 			end
 		else
@@ -1209,22 +1212,25 @@ return {
 
 		if Yatline.config.display_status_line then -- Controls displaying status-line.
 			if show_line(Yatline.config.status_line) then -- Controls recoding of status-line.
+				-- Empties default Yazi status-line.
+				Status._left = {}
+				Status._right = {}
+
 				Status.redraw = function(self)
+					-- Gets Yazi components.
+					local left = self:children_redraw(self.LEFT)
+					local right = self:children_redraw(self.RIGHT)
+
+					-- Gets Yatline components.
 					local left_line = config_line(Yatline.config.status_line.left, Side.LEFT)
 					local right_line = config_line(Yatline.config.status_line.right, Side.RIGHT)
 
+					local sum_right = ui.Line({ right, right_line }) -- Needed for error prevention.
 					return {
-						config_paragraph(self._area, left_line), -- Styles left_line if show_background set.
-						right_line:area(self._area):align(ui.Align.RIGHT),
-						table.unpack(ui.redraw(Progress:new(self._area, right_line:width()))), -- Inserts Progress bar.
+						config_paragraph(self._area, ui.Line({ left_line, left })), -- Styles left_line if show_background set.
+						sum_right:area(self._area):align(ui.Align.RIGHT),
+						table.unpack(ui.redraw(Progress:new(self._area, sum_right:width()))), -- Inserts Progress bar.
 					}
-				end
-
-				Status.children_add = function()
-					return {}
-				end
-				Status.children_remove = function()
-					return {}
 				end
 			end
 		else
