@@ -62,6 +62,7 @@ Yatline = {}
 --- @field section_separator {open: string, close: string} Separators that are between sections.
 --- @field part_separator {open: string, close: string} Separators that are between components.
 --- @field inverse_separator {open: string, close: string} Separators that are used when foreground color of separator is reset.
+--- @field padding {inner: integer, outer: integer} Number of space padding surronding the component.
 --- @field style_a {bg: Color, fg: Color, bg_mode: {normal: Color, select: Color, un_set: Color}} Style of the first section.
 --- @field style_b {bg: Color, fg: Color} Style of the second section.
 --- @field style_c {bg: Color, fg: Color} Style of the third section.
@@ -91,6 +92,8 @@ Yatline.config = {
 	section_separator = { open = "", close = "" },
 	part_separator = { open = "", close = "" },
 	inverse_separator = { open = "", close = "" },
+
+	padding = { inner = 1, outer = 1 },
 
 	style_a = {
 		bg = "white",
@@ -135,7 +138,7 @@ Yatline.config = {
 	header_line = {
 		left = {
 			section_a = {
-				{ type = "line", name = "tabs", params = { "left" } },
+				{ type = "line", name = "tabs" },
 			},
 			section_b = {},
 			section_c = {},
@@ -207,6 +210,26 @@ local function set_component_style(component, component_type)
 		component:style(Yatline.config.style_b)
 	else
 		component:style(Yatline.config.style_c)
+	end
+end
+
+--- Surronds component with paddings.
+--- @param component string | Span | Line Component that will be connected to paddings.
+--- @param component_type ComponentType Which section component will be in [ a | b | c ].
+--- @param in_side Side Left or right side of the either header-line or status-line.
+--- @return Line line A Line which is a component that has padding.
+local function connect_padding(component, component_type, in_side)
+	local inner = ui.Span(string.rep(" ", Yatline.config.padding.inner))
+	local outer = ui.Span(string.rep(" ", Yatline.config.padding.outer))
+
+	set_mode_style(cx.active.mode)
+	set_component_style(inner, component_type)
+	set_component_style(outer, component_type)
+
+	if in_side == Side.LEFT then
+		return ui.Line({ outer, component, inner })
+	else
+		return ui.Line({ inner, component, outer })
 	end
 end
 
@@ -416,7 +439,7 @@ Yatline.string.has_separator = true
 --- @see set_mode_style To know how mode style selected.
 --- @see set_component_style To know how component style applied.
 function Yatline.string.create(string, component_type)
-	local span = ui.Span(" " .. string .. " ")
+	local span = ui.Span(string)
 	set_mode_style(cx.active.mode)
 	set_component_style(span, component_type)
 
@@ -603,7 +626,7 @@ function Yatline.string.get:cursor_position()
 	local length = #cx.active.current.files
 
 	if length ~= 0 then
-		return string.format(" %2d/%-2d", cursor + 1, length)
+		return string.format("%d/%d", cursor + 1, length)
 	else
 		return "0"
 	end
@@ -620,11 +643,11 @@ function Yatline.string.get:cursor_percentage()
 	end
 
 	if percentage == 0 then
-		return " Top "
+		return "Top"
 	elseif percentage == 100 then
-		return " Bot "
+		return "Bot"
 	else
-		return string.format("%3d%% ", percentage)
+		return string.format("%d%%", percentage)
 	end
 end
 
@@ -653,12 +676,15 @@ function Yatline.line.create(line, component_type)
 end
 
 --- Creates and returns line component for tabs.
---- @param side Side Left or right side of the either header-line or status-line.
+--- @param side? string Left or right side of the either header-line or status-line.
 --- @return Line line Customized Line which contains tabs.
 --- @see set_mode_style To know how mode style selected.
 --- @see set_component_style To know how component style applied.
+--- @see connect_padding To know how components have paddings.
 --- @see connect_separator To know how component and separator connected.
 function Yatline.line.get:tabs(side)
+	side = side or "left"
+
 	local tabs = #cx.tabs
 	local lines = {}
 
@@ -670,16 +696,16 @@ function Yatline.line.get:tabs(side)
 	end
 
 	for i = 1, tabs do
-		local text = i
+		local text = tostring(i)
 		if Yatline.config.tab_width > 2 then
 			text = ya.truncate(text .. " " .. cx.tabs[i].name, { max = Yatline.config.tab_width })
 		end
 
 		local separator_style = { bg = nil, fg = nil }
 		if i == cx.tabs.idx then
-			local span = ui.Span(" " .. text .. " ")
+			local tab = connect_padding(text, ComponentType.A, in_side)
 			set_mode_style(cx.tabs[i].mode)
-			set_component_style(span, ComponentType.A)
+			set_component_style(tab, ComponentType.A)
 
 			if Yatline.config.style_a.bg ~= "reset" or Yatline.config.show_background then
 				separator_style.fg = Yatline.config.style_a.bg
@@ -687,18 +713,29 @@ function Yatline.line.get:tabs(side)
 					separator_style.bg = Yatline.config.style_c.bg
 				end
 
-				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.OUTER, separator_style)
+				lines[#lines + 1] = connect_separator(tab, in_side, SeparatorType.OUTER, separator_style)
 			else
 				separator_style.fg = Yatline.config.style_a.fg
 
-				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.INNER, separator_style)
+				lines[#lines + 1] = connect_separator(tab, in_side, SeparatorType.INNER, separator_style)
 			end
 		else
-			local span = ui.Span(" " .. text .. " ")
+			local tab = ui.Span(text)
+			local inner = ui.Span(string.rep(" ", Yatline.config.padding.inner))
+			local outer = ui.Span(string.rep(" ", Yatline.config.padding.outer))
+
 			if Yatline.config.show_background then
-				set_component_style(span, ComponentType.C)
+				set_component_style(inner, ComponentType.C)
+				set_component_style(outer, ComponentType.C)
+				set_component_style(tab, ComponentType.C)
 			else
-				span:style({ fg = Yatline.config.style_c.fg })
+				tab:style({ fg = Yatline.config.style_c.fg })
+			end
+
+			if in_side == Side.LEFT then
+				tab = ui.Line({ outer, tab, inner })
+			else
+				tab = ui.Line({ inner, tab, outer })
 			end
 
 			if i == cx.tabs.idx - 1 then
@@ -740,9 +777,9 @@ function Yatline.line.get:tabs(side)
 				close:style(separator_style)
 
 				if in_side == Side.LEFT then
-					lines[#lines + 1] = ui.Line({ span, close })
+					lines[#lines + 1] = ui.Line({ tab, close })
 				else
-					lines[#lines + 1] = ui.Line({ open, span })
+					lines[#lines + 1] = ui.Line({ open, tab })
 				end
 			else
 				separator_style.fg = Yatline.config.style_c.fg
@@ -750,18 +787,13 @@ function Yatline.line.get:tabs(side)
 					separator_style.bg = Yatline.config.style_c.bg
 				end
 
-				lines[#lines + 1] = connect_separator(span, in_side, SeparatorType.INNER, separator_style)
+				lines[#lines + 1] = connect_separator(tab, in_side, SeparatorType.INNER, separator_style)
 			end
 		end
 	end
 
 	if in_side == Side.RIGHT then
-		local lines_in_right = {}
-		for i = #lines, 1, -1 do
-			lines_in_right[#lines_in_right + 1] = lines[i]
-		end
-
-		return ui.Line(lines_in_right)
+		return ui.Line(reverse_order(lines))
 	else
 		return ui.Line(lines)
 	end
@@ -808,7 +840,6 @@ function Yatline.coloreds.get:permissions()
 
 		if perm then
 			local coloreds = {}
-			coloreds[1] = { " ", "black" }
 
 			for i = 1, #perm do
 				local c = perm:sub(i, i)
@@ -824,10 +855,8 @@ function Yatline.coloreds.get:permissions()
 					fg = Yatline.config.permissions_x_fg
 				end
 
-				coloreds[i + 1] = { c, fg }
+				table.insert(coloreds, { c, fg })
 			end
-
-			coloreds[#perm + 2] = { " ", "black" }
 
 			return coloreds
 		else
@@ -869,14 +898,14 @@ function Yatline.coloreds.get:count(filter)
 	local coloreds
 	if filter then
 		coloreds = {
-			{ string.format(" %s %d ", files_count_icon, num_files), files_count_fg },
-			{ string.format(" %s %d ", Yatline.config.selected.icon, num_selected), Yatline.config.selected.fg },
-			{ string.format(" %s %d ", yanked_icon, num_yanked), yanked_fg },
+			{ string.format("%s %d ", files_count_icon, num_files), files_count_fg },
+			{ string.format("%s %d ", Yatline.config.selected.icon, num_selected), Yatline.config.selected.fg },
+			{ string.format("%s %d", yanked_icon, num_yanked), yanked_fg },
 		}
 	else
 		coloreds = {
-			{ string.format(" %s %d ", Yatline.config.selected.icon, num_selected), Yatline.config.selected.fg },
-			{ string.format(" %s %d ", yanked_icon, num_yanked), yanked_fg },
+			{ string.format("%s %d ", Yatline.config.selected.icon, num_selected), Yatline.config.selected.fg },
+			{ string.format("%s %d", yanked_icon, num_yanked), yanked_fg },
 		}
 	end
 
@@ -889,9 +918,9 @@ function Yatline.coloreds.get:task_states()
 	local tasks = cx.tasks.progress
 
 	local coloreds = {
-		{ string.format(" %s %d ", Yatline.config.total.icon, tasks.total), Yatline.config.total.fg },
-		{ string.format(" %s %d ", Yatline.config.succ.icon, tasks.succ), Yatline.config.succ.fg },
-		{ string.format(" %s %d ", Yatline.config.fail.icon, tasks.fail), Yatline.config.fail.fg },
+		{ string.format("%s %d ", Yatline.config.total.icon, tasks.total), Yatline.config.total.fg },
+		{ string.format("%s %d ", Yatline.config.succ.icon, tasks.succ), Yatline.config.succ.fg },
+		{ string.format("%s %d", Yatline.config.fail.icon, tasks.fail), Yatline.config.fail.fg },
 	}
 
 	return coloreds
@@ -903,8 +932,8 @@ function Yatline.coloreds.get:task_workload()
 	local tasks = cx.tasks.progress
 
 	local coloreds = {
-		{ string.format(" %s %d ", Yatline.config.found.icon, tasks.found), Yatline.config.found.fg },
-		{ string.format(" %s %d ", Yatline.config.processed.icon, tasks.processed), Yatline.config.processed.fg },
+		{ string.format("%s %d ", Yatline.config.found.icon, tasks.found), Yatline.config.found.fg },
+		{ string.format("%s %d", Yatline.config.processed.icon, tasks.processed), Yatline.config.processed.fg },
 	}
 
 	return coloreds
@@ -927,13 +956,11 @@ function Yatline.coloreds.get:string_based_component(component_name, fg, params)
 		end
 
 		if output ~= nil and output ~= "" then
-			return { { " " .. output .. " ", fg } }
-		else
-			return nil
+			return { { output, fg } }
 		end
-	else
-		return nil
 	end
+
+	return nil
 end
 
 --===============--
@@ -948,6 +975,7 @@ end
 --- @param num_section_b_components integer Number of components in section-b.
 --- @param num_section_c_components integer Number of components in section-c.
 --- @return table section_line_components Array of line components whether or not connected with separators.
+--- @see connect_padding To know how components have paddings.
 --- @see connect_separator To know how component and separator connected.
 local function config_components_separators(
 	section_components,
@@ -995,6 +1023,7 @@ local function config_components_separators(
 				end
 			end
 
+			component[1] = connect_padding(component[1], component_type, in_side)
 			section_line_components[i] = connect_separator(component[1], in_side, separator_type, separator_style)
 		else
 			section_line_components[i] = component[1]
