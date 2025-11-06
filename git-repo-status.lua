@@ -295,9 +295,10 @@ function M.get_status(custom_config)
 
 	local path = tostring(cwd)
 
-	-- Check cache
-	local now = os.time() * 1000 -- Convert to milliseconds
-	if cache.path == path and cache.data and (now - cache.timestamp) < config.cache_ttl then
+	-- Check cache (os.time() returns seconds, so convert TTL from ms to seconds)
+	local now = os.time()
+	local cache_ttl_seconds = config.cache_ttl / 1000
+	if cache.path == path and cache.data and (now - cache.timestamp) < cache_ttl_seconds then
 		return cache.data
 	end
 
