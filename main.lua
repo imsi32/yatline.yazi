@@ -105,17 +105,39 @@ local function set_mode_style(mode)
 	end
 end
 
+--- Helper function to apply style table to a component
+--- @param component Span The component to style
+--- @param style table The style table with fg and/or bg fields
+local function apply_style_table(component, style)
+	if not style then
+		return component
+	end
+	-- Apply manually
+	if style.fg          then component:fg(style.fg)  end
+	if style.bg          then component:bg(style.bg)  end
+	if style.bold        then component:bold()        end
+	if style.dim         then component:dim()         end
+	if style.italic      then component:italic()      end
+	if style.underline   then component:underline()   end
+	if style.blink       then component:blink()       end
+	if style.blink_rapid then component:blink_rapid() end
+	if style.reverse     then component:reverse()     end
+	if style.hidden      then component:hidden()      end
+	if style.crossed     then component:crossed()     end
+	return component
+end
+
 --- Sets the style of the component according to the its type.
 --- @param component Span Component that will be styled.
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
 --- @see Style To see how to style, in Yazi's documentation.
 local function set_component_style(component, component_type)
 	if component_type == ComponentType.A then
-		component:style(style_a):bold()
+		apply_style_table(component, style_a):bold()
 	elseif component_type == ComponentType.B then
-		component:style(style_b)
+		apply_style_table(component, style_b)
 	else
-		component:style(style_c)
+		apply_style_table(component, style_c)
 	end
 end
 
@@ -147,8 +169,8 @@ local function connect_separator(component, side, separator_type)
 		close = ui.Span(part_separator_close)
 	end
 
-	open:style(separator_style)
-	close:style(separator_style)
+	apply_style_table(open, separator_style)
+	apply_style_table(close, separator_style)
 
 	if side == Side.LEFT then
 		return ui.Line({ component, close })
@@ -628,7 +650,7 @@ function Yatline.line.get:tabs(side)
 			if show_background then
 				set_component_style(span, ComponentType.C)
 			else
-				span:style({ fg = style_c.fg })
+				span:fg(style_c.fg)
 			end
 
 			if i == cx.tabs.idx - 1 then
@@ -660,8 +682,8 @@ function Yatline.line.get:tabs(side)
 					close = ui.Span(part_separator_close)
 				end
 
-				open:style(separator_style)
-				close:style(separator_style)
+				apply_style_table(open, separator_style)
+				apply_style_table(close, separator_style)
 
 				if in_side == Side.LEFT then
 					lines[#lines + 1] = ui.Line({ span, close })
@@ -1080,7 +1102,7 @@ end
 local function config_paragraph(area, line)
 	local line_array = { line } or {}
 	if show_background then
-		return ui.Text(line_array):area(area):style(style_c)
+		return apply_style_table(ui.Text(line_array):area(area), style_c)
 	else
 		return ui.Text(line_array):area(area)
 	end
@@ -1333,9 +1355,12 @@ return {
 			end
 
 			local left = progress.total - progress.succ
-			return gauge
-				:percent(percent)
-				:label(ui.Span(string.format("%3d%%, %d left", percent, left)):style(th.status.progress_label))
+			return apply_style_table(
+				gauge
+					:percent(percent)
+					:label(ui.Span(string.format("%3d%%, %d left", percent, left)),
+				th.status.progress_label)
+			)
 		end
 
 		if display_header_line then
