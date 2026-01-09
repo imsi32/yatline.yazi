@@ -199,17 +199,62 @@ local function set_mode_style(mode)
 	end
 end
 
+--- Helper function to apply style table to a component
+--- @param component Span The component to style
+--- @param style table The style table with fg and/or bg fields
+local function apply_style_table(component, style)
+	if not style then
+		return component
+	end
+	-- Apply manually
+	if style.fg then
+		component:fg(style.fg)
+	end
+	if style.bg then
+		component:bg(style.bg)
+	end
+	if style.bold then
+		component:bold()
+	end
+	if style.dim then
+		component:dim()
+	end
+	if style.italic then
+		component:italic()
+	end
+	if style.underline then
+		component:underline()
+	end
+	if style.blink then
+		component:blink()
+	end
+	if style.blink_rapid then
+		component:blink_rapid()
+	end
+	if style.reverse then
+		component:reverse()
+	end
+	if style.hidden then
+		component:hidden()
+	end
+	if style.crossed then
+		component:crossed()
+	end
+
+	return component
+end
+
 --- Sets the style of the component according to the its type.
 --- @param component Span Component that will be styled.
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
 --- @see Style To see how to style, in Yazi's documentation.
 local function set_component_style(component, component_type)
 	if component_type == ComponentType.A then
-		component:style(Yatline.config.style_a):bold()
+		apply_style_table(component, style_a):bold()
 	elseif component_type == ComponentType.B then
-		component:style(Yatline.config.style_b)
+		apply_style_table(component, style_b)
 	else
-		component:style(Yatline.config.style_c)
+		apply_style_table(component, style_c)
 	end
 end
 
@@ -262,8 +307,8 @@ local function connect_separator(component, in_side, separator_type, separator_s
 		close = ui.Span(Yatline.config.part_separator.close)
 	end
 
-	open:style(separator_style)
-	close:style(separator_style)
+	apply_style_table(open, separator_style)
+	apply_style_table(close, separator_style)
 
 	if in_side == Side.LEFT then
 		return ui.Line({ component, close })
@@ -729,7 +774,7 @@ function Yatline.line.get:tabs(side)
 				set_component_style(outer, ComponentType.C)
 				set_component_style(tab, ComponentType.C)
 			else
-				tab:style({ fg = Yatline.config.style_c.fg })
+				apply_style_table(tab, { fg = Yatline.config.style_c.fg })
 			end
 
 			if in_side == Side.LEFT then
@@ -773,8 +818,8 @@ function Yatline.line.get:tabs(side)
 					close = ui.Span(Yatline.config.part_separator.close)
 				end
 
-				open:style(separator_style)
-				close:style(separator_style)
+				apply_style_table(open, separator_style)
+				apply_style_table(close, separator_style)
 
 				if in_side == Side.LEFT then
 					lines[#lines + 1] = ui.Line({ tab, close })
@@ -1153,7 +1198,7 @@ end
 local function config_paragraph(area, line)
 	local line_array = { line } or {}
 	if Yatline.config.show_background then
-		return ui.Text(line_array):area(area):style(Yatline.config.style_c)
+		return apply_style_table(ui.Text(line_array):area(area), Yatline.config.style_c)
 	else
 		return ui.Text(line_array):area(area)
 	end
