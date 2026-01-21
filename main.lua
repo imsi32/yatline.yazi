@@ -625,7 +625,7 @@ function Yatline.string.get:tab_path(trimmed, max_length, trim_length)
 
 	local cwd = cx.active.current.cwd
 	local filter = cx.active.current.files.filter
-	local search = cwd.is_search and string.format(" (search: %s", cwd.frag) or ""
+	local search = cwd.is_search and string.format(" (search: %s", cwd.domain) or ""
 
 	local suffix
 	if not filter then
