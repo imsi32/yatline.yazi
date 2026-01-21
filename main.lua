@@ -250,11 +250,11 @@ end
 --- @see Style To see how to style, in Yazi's documentation.
 local function set_component_style(component, component_type)
 	if component_type == ComponentType.A then
-		apply_style_table(component, style_a):bold()
+		apply_style_table(component, Yatline.config.style_a):bold()
 	elseif component_type == ComponentType.B then
-		apply_style_table(component, style_b)
+		apply_style_table(component, Yatline.config.style_b)
 	else
-		apply_style_table(component, style_c)
+		apply_style_table(component, Yatline.config.style_c)
 	end
 end
 
