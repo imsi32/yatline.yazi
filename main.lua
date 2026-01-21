@@ -78,10 +78,8 @@ Yatline = {}
 --- @field files {icon: string, fg: Color} Configuration for the count of files in the active tab.
 --- @field filtereds {icon: string, fg: Color} Configuration for the count of files in the active tab that are filtered.
 --- @field total {icon: string, fg: Color} Configuration for the count of progress tasks that finished.
---- @field succ {icon: string, fg: Color} Configuration for the count of progress tasks that successed.
---- @field fail {icon: string, fg: Color} Configuration for the count of progress tasks that failed.
---- @field found {icon: string, fg: Color} Configuration for the workloads of all progress tasks.
---- @field processed {icon: string, fg: Color} Configuration for the workloads of progressed tasks.
+--- @field success {icon: string, fg: Color} Configuration for the count of progress tasks that successed.
+--- @field failed {icon: string, fg: Color} Configuration for the count of progress tasks that failed.
 --- @field show_background boolean Toggle the visibility of the background where no component exists.
 --- @field display_header_line boolean Toggle the visibility of the header-line.
 --- @field display_status_line boolean Toggle the visibility of the status-line.
@@ -123,10 +121,8 @@ Yatline.config = {
 	filtereds = { icon = "", fg = "magenta" },
 
 	total = { icon = "󰮍", fg = "yellow" },
-	succ = { icon = "", fg = "green" },
-	fail = { icon = "", fg = "red" },
-	found = { icon = "󰮕", fg = "blue" },
-	processed = { icon = "󰐍", fg = "green" },
+	success = { icon = "", fg = "green" },
+	failed = { icon = "", fg = "red" },
 
 	show_background = true,
 
@@ -960,25 +956,12 @@ end
 --- Gets the number of task states.
 --- @return Coloreds coloreds Number of task states.
 function Yatline.coloreds.get:task_states()
-	local tasks = cx.tasks.progress
+	local summary = cx.tasks.summary
 
 	local coloreds = {
-		{ string.format("%s %d ", Yatline.config.total.icon, tasks.total), Yatline.config.total.fg },
-		{ string.format("%s %d ", Yatline.config.succ.icon, tasks.succ), Yatline.config.succ.fg },
-		{ string.format("%s %d", Yatline.config.fail.icon, tasks.fail), Yatline.config.fail.fg },
-	}
-
-	return coloreds
-end
-
---- Gets the number of task workloads.
---- @return Coloreds coloreds Number of task workloads.
-function Yatline.coloreds.get:task_workload()
-	local tasks = cx.tasks.progress
-
-	local coloreds = {
-		{ string.format("%s %d ", Yatline.config.found.icon, tasks.found), Yatline.config.found.fg },
-		{ string.format("%s %d", Yatline.config.processed.icon, tasks.processed), Yatline.config.processed.fg },
+		{ string.format("%s %d ", Yatline.config.total.icon, summary.total), Yatline.config.total.fg },
+		{ string.format("%s %d ", Yatline.config.success.icon, summary.success), Yatline.config.success.fg },
+		{ string.format("%s %d", Yatline.config.failed.icon, summary.failed), Yatline.config.failed.fg },
 	}
 
 	return coloreds
