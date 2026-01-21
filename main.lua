@@ -910,61 +910,111 @@ end
 
 --- Gets the number of selected and yanked files and also number of files or filtered files of the active tab.
 --- @param filter? boolean Whether or not number of files (or filtered files) will be shown.
---- @return Coloreds coloreds Active tab's number of selected and yanked files and also number of files or filtered files
-function Yatline.coloreds.get:count(filter)
+--- @param zero_check? boolean Whether or not counts will be shown if count is zero.
+--- @return Coloreds? coloreds Active tab's number of selected and yanked files and also number of files or filtered files
+function Yatline.coloreds.get:count(filter, zero_check)
 	filter = filter or false
+	zero_check = zero_check or false
 
 	local num_yanked = #cx.yanked
 	local num_selected = #cx.active.selected
 	local num_files = #cx.active.current.files
 
-	local yanked_fg, yanked_icon
-	if cx.yanked.is_cut then
-		yanked_fg = Yatline.config.cut.fg
-		yanked_icon = Yatline.config.cut.icon
-	else
-		yanked_fg = Yatline.config.copied.fg
-		yanked_icon = Yatline.config.copied.icon
-	end
+	local coloreds = {}
 
-	local files_count_fg, files_count_icon
-	if cx.active.current.files.filter or cx.active.current.cwd.is_search then
-		files_count_fg = Yatline.config.filtereds.fg
-		files_count_icon = Yatline.config.filtereds.icon
-	else
-		files_count_fg = Yatline.config.files.fg
-		files_count_icon = Yatline.config.files.icon
-	end
-
-	local coloreds
 	if filter then
-		coloreds = {
-			{ string.format("%s %d ", files_count_icon, num_files), files_count_fg },
-			{ string.format("%s %d ", Yatline.config.selected.icon, num_selected), Yatline.config.selected.fg },
-			{ string.format("%s %d", yanked_icon, num_yanked), yanked_fg },
-		}
-	else
-		coloreds = {
-			{ string.format("%s %d ", Yatline.config.selected.icon, num_selected), Yatline.config.selected.fg },
-			{ string.format("%s %d", yanked_icon, num_yanked), yanked_fg },
-		}
+		local files_count_fg, files_count_icon
+		if cx.active.current.files.filter or cx.active.current.cwd.is_search then
+			files_count_fg = Yatline.config.filtereds.fg
+			files_count_icon = Yatline.config.filtereds.icon
+		else
+			files_count_fg = Yatline.config.files.fg
+			files_count_icon = Yatline.config.files.icon
+		end
+
+		if (zero_check and num_files > 0) or not zero_check then
+			table.insert(coloreds, { string.format("%s %d", files_count_icon, num_files), files_count_fg })
+		end
 	end
 
-	return coloreds
+	if (zero_check and num_selected > 0) or not zero_check then
+		if #coloreds > 0 then
+			table.insert(coloreds, { " ", Yatline.config.selected.fg })
+		end
+
+		table.insert(
+			coloreds,
+			{ string.format("%s %d", Yatline.config.selected.icon, num_selected), Yatline.config.selected.fg }
+		)
+	end
+
+	if (zero_check and num_yanked > 0) or not zero_check then
+		local yanked_fg, yanked_icon
+		if cx.yanked.is_cut then
+			yanked_fg = Yatline.config.cut.fg
+			yanked_icon = Yatline.config.cut.icon
+		else
+			yanked_fg = Yatline.config.copied.fg
+			yanked_icon = Yatline.config.copied.icon
+		end
+
+		if #coloreds > 0 then
+			table.insert(coloreds, { " ", yanked_fg })
+		end
+
+		table.insert(coloreds, { string.format("%s %d", yanked_icon, num_yanked), yanked_fg })
+	end
+
+	if #coloreds > 0 then
+		return coloreds
+	else
+		return nil
+	end
 end
 
 --- Gets the number of task states.
---- @return Coloreds coloreds Number of task states.
-function Yatline.coloreds.get:task_states()
+--- @param zero_check? boolean Whether or not counts will be shown if count is zero.
+--- @return Coloreds? coloreds Number of task states.
+function Yatline.coloreds.get:task_states(zero_check)
+	zero_check = zero_check or false
+
 	local summary = cx.tasks.summary
+	local coloreds = {}
 
-	local coloreds = {
-		{ string.format("%s %d ", Yatline.config.total.icon, summary.total), Yatline.config.total.fg },
-		{ string.format("%s %d ", Yatline.config.success.icon, summary.success), Yatline.config.success.fg },
-		{ string.format("%s %d", Yatline.config.failed.icon, summary.failed), Yatline.config.failed.fg },
-	}
+	if (zero_check and summary.total > 0) or not zero_check then
+		table.insert(
+			coloreds,
+			{ string.format("%s %d", Yatline.config.total.icon, summary.total), Yatline.config.total.fg }
+		)
+	end
 
-	return coloreds
+	if (zero_check and summary.success > 0) or not zero_check then
+		if #coloreds > 0 then
+			table.insert(coloreds, { " ", Yatline.config.success.fg })
+		end
+
+		table.insert(
+			coloreds,
+			{ string.format("%s %d", Yatline.config.success.icon, summary.success), Yatline.config.success.fg }
+		)
+	end
+
+	if (zero_check and summary.failed > 0) or not zero_check then
+		if #coloreds > 0 then
+			table.insert(coloreds, { " ", Yatline.config.failed.fg })
+		end
+
+		table.insert(
+			coloreds,
+			{ string.format("%s %d", Yatline.config.failed.icon, summary.failed), Yatline.config.failed.fg }
+		)
+	end
+
+	if #coloreds > 0 then
+		return coloreds
+	else
+		return nil
+	end
 end
 
 --- Gets colored which contains string based component's string and desired foreground color.
