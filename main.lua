@@ -643,6 +643,36 @@ function Yatline.string.get:tab_path(trimmed, max_length, trim_length)
 	end
 end
 
+--- Gets the filtered query.
+--- @param key? string Key value that indicates filtered query (default: "filter:")
+--- @return string query Filtered query.
+function Yatline.string.get:filter_query(key)
+	key = key or "filter:"
+
+	local filter = cx.active.current.files.filter
+
+	if filter then
+		return string.format("%s %s", key, tostring(filter))
+	else
+		return ""
+	end
+end
+
+--- Gets the searched query.
+--- @param key? string Key value that indicates searched query (default: "search:")
+--- @return string query Searched query.
+function Yatline.string.get:search_query(key)
+	key = key or "search:"
+
+	local cwd = cx.active.current.cwd
+
+	if cwd.is_search then
+		return string.format("%s %s", key, cwd.domain)
+	else
+		return ""
+	end
+end
+
 --- Gets the mode of active tab.
 --- @return string mode Active tab's mode.
 function Yatline.string.get:tab_mode()
