@@ -625,15 +625,24 @@ function Yatline.string.get:tab_path(trimmed, max_length, trim_length)
 
 	local cwd = cx.active.current.cwd
 	local filter = cx.active.current.files.filter
-	local search = cwd.is_search and string.format(" (search: %s", cwd.domain) or ""
+	local finder = cx.active.finder
+
+	local t = {}
+	if cwd.is_search then
+		t[#t + 1] = string.format("search: %s", cwd.domain)
+	end
+	if filter then
+		t[#t + 1] = string.format("filter: %s", filter)
+	end
+	if finder then
+		t[#t + 1] = string.format("find: %s", finder)
+	end
 
 	local suffix
-	if not filter then
-		suffix = search == "" and search or search .. ")"
-	elseif search == "" then
-		suffix = string.format(" (filter: %s)", tostring(filter))
+	if #t ~= 0 then
+		suffix = " (" .. table.concat(t, ", ") .. ")"
 	else
-		suffix = string.format("%s, filter: %s)", search, tostring(filter))
+		suffix = ""
 	end
 
 	if trimmed then
@@ -668,6 +677,21 @@ function Yatline.string.get:search_query(key)
 
 	if cwd.is_search then
 		return string.format("%s %s", key, cwd.domain)
+	else
+		return ""
+	end
+end
+
+--- Gets the finded query.
+--- @param key? string Key value that indicates finded query (default: "find:")
+--- @return string query Finded query.
+function Yatline.string.get:finder_query(key)
+	key = key or "find:"
+
+	local finder = cx.active.finder
+
+	if finder then
+		return string.format("%s %s", key, tostring(finder))
 	else
 		return ""
 	end
