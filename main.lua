@@ -240,6 +240,28 @@ local function apply_style_table(component, style)
 	return component
 end
 
+--- Helper function to apply style table to a component
+--- @param component Span The component to style
+--- @param style table The style table with fg and/or bg fields
+local function apply_style_table(component, style)
+	if not style then
+		return component
+	end
+	-- Apply manually
+	if style.fg          then component:fg(style.fg)  end
+	if style.bg          then component:bg(style.bg)  end
+	if style.bold        then component:bold()        end
+	if style.dim         then component:dim()         end
+	if style.italic      then component:italic()      end
+	if style.underline   then component:underline()   end
+	if style.blink       then component:blink()       end
+	if style.blink_rapid then component:blink_rapid() end
+	if style.reverse     then component:reverse()     end
+	if style.hidden      then component:hidden()      end
+	if style.crossed     then component:crossed()     end
+	return component
+end
+
 --- Sets the style of the component according to the its type.
 --- @param component Span Component that will be styled.
 --- @param component_type ComponentType Which section component will be in [ a | b | c ].
