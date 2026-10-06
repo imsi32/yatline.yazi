@@ -773,7 +773,23 @@ end
 --- @return string date Date or time values.
 --- @see os.date To see how format works.
 function Yatline.string.get:date(format)
-	return tostring(os.date(format))
+	return "🕜 " .. tostring(os.date(format))
+end
+
+--- Gets the hovered file modified time.
+--- @param format string datetime Format.
+--- @return string mtime values.
+--- @see os.date To see how format works.
+function Yatline.string.get:hovered_mtime(format)
+	local hovered = cx.active.current.hovered
+	if not hovered then
+		return ""
+	end
+	if format == nil then
+		format = "%Y-%m-%d %H:%M"
+	end
+	local mtime = (hovered.cha.mtime or 0) // 1
+	return tostring(os.date(format, mtime))
 end
 
 --======================--
